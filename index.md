@@ -30,7 +30,7 @@ title: Amara Dinesh Kumar
       <a href="/aerolab/"><b>AeroLab</b></a> &mdash; A latency-aware benchmark for generalist language models as adaptive UAV pilots, built on <code>crazyflow</code> (JAX / MuJoCo MJX). Capability-oriented navigation worlds, a shared shaped-velocity control contract, and a frozen 130-run evaluation against classical and learned baselines.<br>
       <a href="/aerolab/">Project page</a> &middot;
       <a href="https://github.com/dineshresearch/aerolab">Code</a> &middot;
-      <a href="/aerolab/static/aerolab_paper.pdf">Paper (PDF)</a>
+      Paper (arXiv forthcoming)
     </td>
   </tr>
 </table>
