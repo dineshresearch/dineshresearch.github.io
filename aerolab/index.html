@@ -199,7 +199,7 @@
     <h2><span class="no">01</span>Abstract</h2>
     <p>Generalist language models are increasingly used as robot policies, yet for unmanned aerial vehicles (UAVs) the evidence remains qualitative: demonstrations of a model flying a quadrotor, or quantitative suites that abstract flight control away entirely. No standardized benchmark asks whether a pretrained model can <em>adapt its navigation and control strategy</em> across long-horizon, partially observed, unfamiliar missions, against competent classical and learned baselines, under a protocol that accounts for the latency, architecture and cost of inference.</p>
     <p>We introduce <b>AeroLab</b>, a reproducible benchmark built on the <code class="inline">crazyflow</code> JAX/MuJoCo&nbsp;MJX drone simulator. AeroLab contributes (i) an explicit <em>control decomposition</em> that separates slow model-facing decisions (goals, skills, judgments) from fast controller-facing motor commands, with a shaped velocity interface shared identically by every policy; (ii) a <em>latency-aware clock protocol</em> (paused, real-time, hover-while-thinking) that makes inference cost a measured quantity rather than a hidden confound; (iii) capability-oriented navigation worlds targeting long-horizon decisions, memory and recovery, active sensing, and unfamiliar compositions, with disjoint train/validation/test splits and a separate sensor-OOD axis; and (iv) a typed-decision-model arm, specified but not evaluated in this preprint, that asks whether fast, calibrated, non-generative decision models can substitute for language models at the skill-selection layer.</p>
-    <p>We describe the simulator substrate, the observation/action contract, the scoring and statistical protocol, and the agentic harness, and report the frozen 130-run evaluation (a paused-clock ceiling): a persistent-map planner completes half the missions (70.6% weighted progress) while both LLM pilots stay below 10% and fail at the first detour; the free small model nonetheless passes the recovery-stage checkpoint (6/8 encountered, in every case by avoiding the dead end rather than recovering from it) yet never a detour (0/11), and significantly outperforms the paid frontier model, which also suffers infrastructure failures the small model never exhibits. A commander micro-experiment shows the same small model decomposes missions reliably, supporting the control decomposition. All numbers are measured under a locked freeze with explicit denominators; none are fabricated.</p>
+    <p>We describe the simulator substrate, the observation/action contract, the scoring and statistical protocol, and the agentic harness, and report the frozen 130-run evaluation (a paused-clock ceiling) of two open-weight LLM pilots, <b>Inkling-2</b> (750B parameters) and <b>MiniMax-M2.7</b>: a persistent-map planner completes half the missions (70.6% weighted progress) while both LLM pilots stay below 10% and fail at the first detour; Inkling-2 nonetheless passes the recovery-stage checkpoint (6/8 encountered, in every case by avoiding the dead end rather than recovering from it) yet never a detour (0/11), and significantly outperforms MiniMax-M2.7, which also suffers infrastructure failures Inkling-2 never exhibits. A commander micro-experiment shows that Inkling-2 decomposes missions reliably, supporting the control decomposition. All numbers are measured under a locked freeze with explicit denominators; none are fabricated.</p>
     <div class="note">Code, frozen protocol manifests and run traces: <a href="https://github.com/dineshresearch/aerolab">github.com/dineshresearch/aerolab</a> (private at preprint time; public release upon publication). The headline board on this page is the <b>paused-clock ceiling</b>: inference latency is disclosed and measured, but the simulator waits for the model, so real-time flight performance is an upper bound, not a claim of real-time autonomy.</div>
   </div>
 </section>
@@ -234,7 +234,7 @@
     </div>
     <p>The model never commands raw motor PWM. It emits waypoint / velocity setpoints through a shaped <code class="inline">VEL</code> contract; a fast classical controller closes the attitude and rate loops. This keeps the comparison about <em>navigation and adaptation</em>, and keeps every policy on identical low-level footing.</p>
 
-    <h3>Sensors (verified on hardware-free CPU)</h3>
+    <h3>Sensors (verified on CPU)</h3>
     <div class="trio">
       <figure class="shot"><img src="static/sensors/camera_track_rgb.png" alt="Third-person tracking camera RGB frame of the quadrotor hovering."><div class="cap">Tracking camera RGB (fovy 45&deg;)</div></figure>
       <figure class="shot"><img src="static/sensors/camera_fpv_rgb.png" alt="First-person view RGB frame from the onboard forward camera."><div class="cap">Onboard FPV RGB (fovy 70&deg;)</div></figure>
@@ -347,7 +347,7 @@
 <section id="results">
   <div class="wrap">
     <h2><span class="no">06</span>Results (frozen 130-run, paused-clock ceiling)</h2>
-    <p class="lead">Equal-world weighted progress with stratified-bootstrap 95% CIs. &ldquo;Success&rdquo; = mission complete with zero collisions; &ldquo;strict&rdquo; additionally requires the capability-specific predicate.</p>
+    <p class="lead">Equal-world weighted progress with stratified-bootstrap 95% CIs. &ldquo;Success&rdquo; = mission complete with zero collisions; &ldquo;strict&rdquo; additionally requires the capability-specific predicate. LLM pilots: <b>Inkling-2</b> (750B parameters) and <b>MiniMax-M2.7</b>, both open-weight models served through hosted inference; artifact keys <code class="inline">llm_small</code>/<code class="inline">llm_large</code> are historical arm labels, not size claims.</p>
 
     <h3>Headline board &mdash; nominal sensors</h3>
     <div class="tblwrap">
@@ -355,14 +355,14 @@
         <thead><tr><th>Policy</th><th class="num">Weighted progress % [95% CI]</th><th class="num">Success</th><th class="num">Strict success</th><th class="num">n (worlds)</th></tr></thead>
         <tbody>
           <tr class="hl"><td><b>Persistent-map planner</b> (classical)</td><td class="num">70.6 <span class="ci">[58.2, 82.3]</span></td><td class="num">0.50</td><td class="num">0.45</td><td class="num">20 (4)</td></tr>
-          <tr><td>LLM small (free)</td><td class="num">9.3 <span class="ci">[5.9, 12.9]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">20 (4)</td></tr>
+          <tr><td>Inkling-2 (LLM)</td><td class="num">9.3 <span class="ci">[5.9, 12.9]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">20 (4)</td></tr>
           <tr><td>Reactive (classical)</td><td class="num">4.0 <span class="ci">[2.0, 6.0]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">20 (4)</td></tr>
           <tr><td>Behavior cloning (learned)</td><td class="num">4.0 <span class="ci">[2.0, 6.0]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">20 (4)</td></tr>
-          <tr><td>LLM large (paid frontier)</td><td class="num">4.0 <span class="ci">[1.6, 6.5]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">16 (4)</td></tr>
+          <tr><td>MiniMax-M2.7 (LLM)</td><td class="num">4.0 <span class="ci">[1.6, 6.5]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">16 (4)</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="footnote">The planner completes half the missions; both LLM pilots stay below 10% weighted progress and fail at the first detour. The free small model nonetheless significantly outperforms the paid frontier model.</p>
+    <p class="footnote">The planner completes half the missions; both LLM pilots stay below 10% weighted progress and fail at the first detour. Inkling-2 nonetheless significantly outperforms MiniMax-M2.7.</p>
 
     <h3>The first detour is the capability boundary</h3>
     <div class="tblwrap">
@@ -370,25 +370,25 @@
         <thead><tr><th>Policy</th><th class="num">Detour encountered</th><th class="num">Strict safe-detour completion</th><th class="num">Sensing encountered</th><th class="num">Strict visibility-before-commit</th></tr></thead>
         <tbody>
           <tr class="hl"><td>Planner</td><td class="num">20</td><td class="num">90%</td><td class="num">14</td><td class="num">71.25%</td></tr>
-          <tr><td>LLM small</td><td class="num">11</td><td class="num">0%</td><td class="num">7</td><td class="num">0%</td></tr>
-          <tr><td>LLM large</td><td class="num">6</td><td class="num">0%</td><td class="num">4</td><td class="num">0%</td></tr>
+          <tr><td>Inkling-2</td><td class="num">11</td><td class="num">0%</td><td class="num">7</td><td class="num">0%</td></tr>
+          <tr><td>MiniMax-M2.7</td><td class="num">6</td><td class="num">0%</td><td class="num">4</td><td class="num">0%</td></tr>
           <tr><td>Behavior cloning</td><td class="num">8</td><td class="num">0%</td><td class="num">4</td><td class="num">0%</td></tr>
           <tr><td>Reactive</td><td class="num">8</td><td class="num">0%</td><td class="num">4</td><td class="num">0%</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="footnote">Strict predicates: detour = completed <em>and</em> retreated; recovery = completed <em>and</em> recovered after entering the dead end; sensing = completed <em>and</em> visible before commit. The free small model passes the recovery-stage checkpoint in <b>6 of 8</b> encountered episodes, but in every case by <em>avoiding</em> the dead end (avoided-and-completed = 6); on the single episode where it enters (eligible n = 1) it does not recover, so strict recovery success is 0. It never completes a detour (0/11). The planner avoids-and-completes 14/19 and recovers in 33.3% of its 5 eligible entries; BC enters in 8/8 and recovers in none; reactive and the large LLM never reach a dead end (0 eligible). &ldquo;Recovery&rdquo; in the loose checkpoint sense is therefore largely dead-end avoidance, not the instrumented retreat-and-recover maneuver.</p>
+    <p class="footnote">Strict predicates: detour = completed <em>and</em> retreated; recovery = completed <em>and</em> recovered after entering the dead end; sensing = completed <em>and</em> visible before commit. Inkling-2 passes the recovery-stage checkpoint in <b>6 of 8</b> encountered episodes, but in every case by <em>avoiding</em> the dead end (avoided-and-completed = 6); on the single episode where it enters (eligible n = 1) it does not recover, so strict recovery success is 0. It never completes a detour (0/11). The planner avoids-and-completes 14/19 and recovers in 33.3% of its 5 eligible entries; BC enters in 8/8 and recovers in none; reactive and MiniMax-M2.7 never reach a dead end (0 eligible). &ldquo;Recovery&rdquo; in the loose checkpoint sense is therefore largely dead-end avoidance, not the instrumented retreat-and-recover maneuver.</p>
 
     <h3>Paired differences (same layouts, world-equal-weighted)</h3>
     <div class="tblwrap">
       <table>
         <thead><tr><th>Comparison (A &minus; B)</th><th class="num">&Delta; progress pts [95% CI]</th><th class="num">Paired layouts</th></tr></thead>
         <tbody>
-          <tr class="hl"><td>Planner &minus; LLM small</td><td class="num">+61.2 <span class="ci">[46.2, 76.0]</span></td><td class="num">20</td></tr>
-          <tr><td>Planner &minus; LLM large</td><td class="num">+73.3 <span class="ci">[56.9, 88.8]</span></td><td class="num">16</td></tr>
+          <tr class="hl"><td>Planner &minus; Inkling-2</td><td class="num">+61.2 <span class="ci">[46.2, 76.0]</span></td><td class="num">20</td></tr>
+          <tr><td>Planner &minus; MiniMax-M2.7</td><td class="num">+73.3 <span class="ci">[56.9, 88.8]</span></td><td class="num">16</td></tr>
           <tr><td>Planner &minus; BC</td><td class="num">+66.6 <span class="ci">[52.9, 79.5]</span></td><td class="num">20</td></tr>
-          <tr><td>LLM small &minus; LLM large</td><td class="num">+2.8 <span class="ci">[0.5, 5.8]</span></td><td class="num">16</td></tr>
-          <tr><td>LLM small &minus; reactive</td><td class="num">+5.3 <span class="ci">[1.7, 9.4]</span></td><td class="num">20</td></tr>
+          <tr><td>Inkling-2 &minus; MiniMax-M2.7</td><td class="num">+2.8 <span class="ci">[0.5, 5.8]</span></td><td class="num">16</td></tr>
+          <tr><td>Inkling-2 &minus; reactive</td><td class="num">+5.3 <span class="ci">[1.7, 9.4]</span></td><td class="num">20</td></tr>
           <tr><td>BC &minus; reactive</td><td class="num">0.0 <span class="ci">[0.0, 0.0]</span></td><td class="num">20</td></tr>
         </tbody>
       </table>
@@ -400,8 +400,8 @@
         <thead><tr><th>Policy</th><th class="num">Nominal %</th><th class="num">OOD %</th><th class="num">&Delta; (OOD &minus; nominal) [95% CI]</th></tr></thead>
         <tbody>
           <tr class="hl"><td>Planner</td><td class="num">70.6</td><td class="num">80.0</td><td class="num">+8.3 <span class="ci">[0.0, 25.0]</span></td></tr>
-          <tr><td>LLM small</td><td class="num">9.3</td><td class="num">3.3</td><td class="num">&minus;2.8 <span class="ci">[&minus;5.6, 0.0]</span></td></tr>
-          <tr><td>LLM large</td><td class="num">4.0</td><td class="num">2.5</td><td class="num">&minus;2.5 <span class="ci">[&minus;5.0, 0.0]</span></td></tr>
+          <tr><td>Inkling-2</td><td class="num">9.3</td><td class="num">3.3</td><td class="num">&minus;2.8 <span class="ci">[&minus;5.6, 0.0]</span></td></tr>
+          <tr><td>MiniMax-M2.7</td><td class="num">4.0</td><td class="num">2.5</td><td class="num">&minus;2.5 <span class="ci">[&minus;5.0, 0.0]</span></td></tr>
           <tr><td>Behavior cloning</td><td class="num">4.0</td><td class="num">0.0</td><td class="num">&minus;3.3 <span class="ci">[&minus;6.7, 0.0]</span></td></tr>
           <tr><td>Reactive</td><td class="num">4.0</td><td class="num">3.3</td><td class="num">0.0 <span class="ci">[0.0, 0.0]</span></td></tr>
         </tbody>
@@ -417,19 +417,19 @@
           <tr><td>Reactive</td><td class="num">34</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td>no inference failures</td></tr>
           <tr><td>Planner</td><td class="num">42</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td>no inference failures</td></tr>
           <tr><td>BC</td><td class="num">18</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td>no inference failures</td></tr>
-          <tr><td>LLM small (free)</td><td class="num">141</td><td class="num">63,129</td><td class="num">365,082</td><td>12 invalid-action terminations; <b>0 infrastructure failures</b></td></tr>
-          <tr><td>LLM large (paid)</td><td class="num">358</td><td class="num">258,012</td><td class="num">0</td><td><b>6 layouts aborted on infrastructure failures</b>; 0 invalid actions</td></tr>
+          <tr><td>Inkling-2</td><td class="num">141</td><td class="num">63,129</td><td class="num">365,082</td><td>12 invalid-action terminations; <b>0 infrastructure failures</b></td></tr>
+          <tr><td>MiniMax-M2.7</td><td class="num">358</td><td class="num">258,012</td><td class="num">0</td><td><b>6 layouts aborted on infrastructure failures</b>; 0 invalid actions</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="footnote">The paid frontier model is ~2.5&times; slower per episode and consumes ~4&times; the input tokens with no cache benefit, yet scores <em>below</em> the free small model and aborts layouts the small model completes. Latency and cost are protocol axes, not footnotes.</p>
+    <p class="footnote">MiniMax-M2.7 is ~2.5&times; slower per episode and consumes ~4&times; the input tokens with no cache benefit, yet scores <em>below</em> Inkling-2 and aborts layouts Inkling-2 completes. Latency and cost are protocol axes, not footnotes.</p>
 
     <details>
       <summary>Full frozen per-layout board (26 layouts &times; 5 policies)</summary>
       <p class="footnote">Cell = weighted progress % + termination code. <span class="pill S">S</span> mission complete (success) &middot; <span class="pill C">C</span> contact &middot; <span class="pill T">T</span> time limit &middot; <span class="pill I">I</span> invalid action &middot; <span class="pill X">X</span> infrastructure failure &middot; <span class="pill Q">?</span> agent stopped. Str. = stratum (F = frozen test, H = held-out composition).</p>
       <div class="tblwrap">
         <table>
-          <thead><tr><th>Layout</th><th>Str.</th><th class="num">reactive</th><th class="num">planner</th><th class="num">bc</th><th class="num">llm_small</th><th class="num">llm_large</th></tr></thead>
+          <thead><tr><th>Layout</th><th>Str.</th><th class="num">reactive</th><th class="num">planner</th><th class="num">bc</th><th class="num">Inkling-2</th><th class="num">MiniMax-M2.7</th></tr></thead>
           <tbody>
             <tr><td>bridge 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
             <tr><td>bridge 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
@@ -469,7 +469,7 @@
     <h2><span class="no">07</span>Flight demos</h2>
     <p class="lead">Recorded flights on the development laptop. Classical specialists and a zero-shot language-model pilot, all through the same shaped VEL interface.</p>
     <div class="grid c2">
-      <div class="demo"><div class="media"><video src="static/demos/llm_reach_pos_fpv.mp4" controls loop muted playsinline preload="metadata"></video></div><div class="cap"><b>Zero-shot LLM pilot (FPV).</b> A free small language model, given only the task and state, chooses a ramped setpoint sequence (takeoff &rarr; stabilize &rarr; translate) and reaches <code class="inline">[1,0,1]</code> with final error 0.062 m and no crash &mdash; no scripted actions. 6 s of sim-time.</div></div>
+      <div class="demo"><div class="media"><video src="static/demos/llm_reach_pos_fpv.mp4" controls loop muted playsinline preload="metadata"></video></div><div class="cap"><b>Zero-shot LLM pilot (FPV).</b> Inkling-2, an open-weight language model, given only the task and state, chooses a ramped setpoint sequence (takeoff &rarr; stabilize &rarr; translate) and reaches <code class="inline">[1,0,1]</code> with final error 0.062 m and no crash &mdash; no scripted actions. 6 s of sim-time.</div></div>
       <div class="demo"><div class="media"><img src="static/demos/gate_flight.gif" alt="Animated third-person flight of a classical policy crossing a racing gate."></div><div class="cap"><b>Gate crossing (classical).</b> Tracking view of a specialist policy threading an ordered racing gate.</div></div>
       <div class="demo"><div class="media"><img src="static/demos/hover_flight.gif" alt="Animated third-person flight of a stable hover."></div><div class="cap"><b>Stable hover (classical).</b> Takeoff and equilibrium at 1 m; the reference equilibrium used for sensor verification.</div></div>
       <div class="demo"><div class="media"><img src="static/demos/reach_diag_flight.gif" alt="Animated third-person flight of a diagonal reach maneuver."></div><div class="cap"><b>Diagonal reach (classical).</b> A lateral + vertical setpoint ramp tracked by the shared controller.</div></div>
@@ -488,6 +488,7 @@
     <h2><span class="no">08</span>Sim-to-real anchor</h2>
     <p class="lead">AeroLab reuses gate geometry and task/config/scoring patterns from the <code class="inline">crazyflow</code>-based <code class="inline">lsy_drone_racing</code> benchmark, whose MJCF gate assets transfer visually to a real Crazyflie.</p>
     <figure class="shot" style="max-width:760px;margin:0 auto"><img src="static/sim2real/lsy_drone_racing_sim2real_gates.png" alt="Side-by-side MuJoCo rendering and real-world photograph of a Crazyflie at a racing gate, showing visual match of gate geometry."><div class="cap">Sim-to-real visual match of racing-gate geometry: MuJoCo rendering (left) and the real world with a Crazyflie (right), from the <code class="inline">lsy_drone_racing</code> benchmark. Evidence that MJCF gate assets transfer visually.</div></figure>
+    <div class="note" style="margin-top:16px"><b>Safety notice &mdash; no physical transfer experiments.</b> In simulation, the evaluated LLM pilots issued unsafe control proposals: out-of-contract hold durations, out-of-range yaw commands, and clearance-violating setpoints that ended in contact. For safety reasons we have not performed sim-to-real experiments with these policies, and no physical flight is claimed. Research on using language models for robot control is at a very early stage; any future hardware transfer requires independent safety validation, deterministic envelopes and stopping mechanisms that do not rely on the model&rsquo;s judgment alone. The figure above is a visual geometry anchor from prior work, not a transferred-policy result.</div>
   </div>
 </section>
 
@@ -496,9 +497,9 @@
     <h2><span class="no">09</span>Limitations &amp; honest scope</h2>
     <div class="grid c2">
       <div class="card"><h4>Paused-clock ceiling</h4><p>The headline board pauses sim-time during inference. It measures decision quality, not real-time autonomy; real-time and hover-while-thinking modes are the latency stress axes.</p></div>
-      <div class="card"><h4>Small n, wide CIs</h4><p>130 runs over 26 layouts give informative but wide intervals; several OOD and paired CIs touch or include 0. The large arm is scored on 20/26 layouts (disaster-nominal n = 2), and equal-world paired weighting over-weights that world. Claims are limited to what the intervals support.</p></div>
-      <div class="card"><h4>Capability predicates</h4><p>Strict capability success (completed &and; predicate) and loose checkpoint completion are reported separately and labeled; the small model&rsquo;s 6/8 recovery-stage passes are dead-end <em>avoidance</em>, not instrumented recovery (strict 0/1 eligible). Mixing them would overstate recovery or detour ability.</p></div>
-      <div class="card"><h4>Simulation-only</h4><p>No physical flight claims. The sim-to-real figure is a visual geometry anchor from prior work, not a transferred-policy result.</p></div>
+      <div class="card"><h4>Small n, wide CIs</h4><p>130 runs over 26 layouts give informative but wide intervals; several OOD and paired CIs touch or include 0. The MiniMax-M2.7 arm is scored on 20/26 layouts (disaster-nominal n = 2), and equal-world paired weighting over-weights that world. Claims are limited to what the intervals support.</p></div>
+      <div class="card"><h4>Capability predicates</h4><p>Strict capability success (completed &and; predicate) and loose checkpoint completion are reported separately and labeled; Inkling-2&rsquo;s 6/8 recovery-stage passes are dead-end <em>avoidance</em>, not instrumented recovery (strict 0/1 eligible). Mixing them would overstate recovery or detour ability.</p></div>
+      <div class="card"><h4>Simulation-only, sim-to-real deferred for safety</h4><p>No physical flight claims. The LLM pilots issued unsafe control proposals in simulation, so sim-to-real transfer experiments were not performed; LLM-based robot control is early-stage research. The sim-to-real figure is a visual geometry anchor from prior work, not a transferred-policy result.</p></div>
     </div>
   </div>
 </section>
