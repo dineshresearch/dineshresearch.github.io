@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AeroLab: A Latency-Aware Benchmark for Generalist Language Models as Adaptive UAV Pilots</title>
+<meta name="description" content="AeroLab is a reproducible, latency-aware benchmark that asks whether pretrained generalist language models can adapt their navigation and control strategy across long-horizon, partially observed UAV missions, against competent classical and learned baselines.">
+<meta property="og:title" content="AeroLab: Language Models as Adaptive UAV Pilots">
+<meta property="og:description" content="A latency-aware benchmark for generalist language models as adaptive UAV pilots, built on crazyflow (JAX/MuJoCo MJX).">
+<meta property="og:image" content="static/worlds/worlds_teaser.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="/favicon.ico">
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a202c; --muted:#5a6572; --line:#e3e8ee;
+    --accent:#0b6bcb; --accent-2:#0a5aa8; --soft:#f5f8fb; --soft-2:#eef4fa;
+    --good:#1a7f4b; --bad:#b3372f; --warn:#9a6b00;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:var(--sans);color:var(--fg);background:var(--bg);line-height:1.65;font-size:16px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  img{max-width:100%;display:block}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+
+  /* sticky nav */
+  nav.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav.top .wrap{display:flex;align-items:center;gap:18px;height:54px;overflow-x:auto}
+  nav.top .brand{font-weight:700;letter-spacing:.02em;white-space:nowrap}
+  nav.top .brand span{color:var(--accent)}
+  nav.top a.nl{color:var(--muted);font-size:14px;white-space:nowrap}
+  nav.top a.nl:hover{color:var(--accent);text-decoration:none}
+
+  /* hero */
+  header.hero{padding:56px 0 30px;text-align:center;background:linear-gradient(180deg,var(--soft-2),#fff)}
+  .badge{display:inline-block;font-size:12.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-2);background:#e3eefb;border:1px solid #cfe9ff;border-radius:999px;padding:4px 14px;margin-bottom:18px}
+  h1.title{font-size:clamp(26px,4.2vw,40px);line-height:1.22;margin:0 auto 14px;max-width:900px;font-weight:800;letter-spacing:-.01em}
+  .authors{font-size:17px;color:var(--fg);margin:0 0 4px}
+  .authors a{color:var(--fg);font-weight:600}
+  .affil{color:var(--muted);font-size:14px;margin:0 0 22px}
+  .links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:0 0 8px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;color:var(--fg);border-radius:10px;padding:9px 16px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .btn:hover{text-decoration:none;border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-2);color:#fff}
+  .btn svg{width:16px;height:16px;fill:currentColor}
+
+  /* teaser */
+  .teaser{margin:26px auto 8px}
+  .teaser img{border-radius:14px;border:1px solid var(--line);box-shadow:0 8px 30px rgba(16,24,40,.10)}
+  .teaser figcaption{color:var(--muted);font-size:13.5px;text-align:center;margin-top:10px}
+
+  section{padding:44px 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:none}
+  h2{font-size:26px;margin:0 0 6px;font-weight:800;letter-spacing:-.01em}
+  h2 .no{color:var(--accent);font-family:var(--mono);font-size:18px;margin-right:10px;font-weight:600}
+  .lead{color:var(--muted);margin:0 0 22px;font-size:15.5px}
+  h3{font-size:18.5px;margin:26px 0 8px;font-weight:700}
+  p{margin:0 0 14px}
+
+  /* cards */
+  .grid{display:grid;gap:16px}
+  .grid.c2{grid-template-columns:repeat(2,1fr)}
+  .grid.c4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:860px){.grid.c4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){.grid.c2,.grid.c4{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff}
+  .card .k{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600;letter-spacing:.04em}
+  .card h4{margin:6px 0 8px;font-size:16.5px}
+  .card p{font-size:14.5px;color:var(--muted);margin:0}
+
+  /* figures */
+  figure{margin:0}
+  .shot{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--soft)}
+  .shot img{width:100%}
+  .shot .cap{font-size:12.5px;color:var(--muted);padding:7px 10px;background:#fff;border-top:1px solid var(--line)}
+  .trio{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:12px}
+  @media(max-width:760px){.trio{grid-template-columns:1fr}}
+
+  /* world blocks */
+  .world{border:1px solid var(--line);border-radius:16px;padding:22px;margin:0 0 22px;background:#fff}
+  .world .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .world .head h3{margin:0;font-size:20px}
+  .world .head code{font-family:var(--mono);font-size:13px;color:var(--muted);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+  .tagrow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+  .tag{font-size:12px;font-weight:600;border-radius:999px;padding:3px 11px;border:1px solid var(--line);color:var(--muted);background:var(--soft)}
+  .tag.cap{color:var(--accent-2);background:#e3eefb;border-color:#cfe9ff}
+  .world p.desc{font-size:15px;color:var(--fg)}
+
+  /* tables */
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:14px;background:#fff}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{background:var(--soft);font-weight:700;font-size:13px;letter-spacing:.02em;color:var(--fg);border-bottom:2px solid var(--line)}
+  tbody tr:last-child td{border-bottom:none}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
+  tr.hl td{background:#f0f7ff}
+  .ci{color:var(--muted);font-size:12px}
+  .pill{display:inline-block;font-family:var(--mono);font-size:12px;border-radius:6px;padding:1px 7px;border:1px solid var(--line)}
+  .pill.S{color:var(--good);background:#e9f7ef;border-color:#bfe6cf}
+  .pill.C{color:var(--bad);background:#fbeeec;border-color:#eccfcc}
+  .pill.T{color:var(--warn);background:#fdf6e3;border-color:#eadfb8}
+  .pill.I{color:#7a4bbf;background:#f3eefc;border-color:#ddcdf2}
+  .pill.X{color:#5a6572;background:#eef1f4;border-color:#d8dde3}
+  .pill.Q{color:#5a6572;background:#eef1f4;border-color:#d8dde3}
+  .footnote{font-size:13px;color:var(--muted);margin:8px 0 0}
+
+  /* code / bibtex */
+  pre{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:12px 0}
+  code.inline{font-family:var(--mono);font-size:13px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+  .copyrow{display:flex;justify-content:flex-end;margin-bottom:-6px}
+  .copybtn{font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;color:var(--muted)}
+  .copybtn:hover{color:var(--accent);border-color:var(--accent)}
+
+  /* diagram */
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:16px 0}
+  .fnode{flex:1;min-width:150px;border:1.5px solid var(--accent);border-radius:12px;padding:12px 14px;background:#f0f7ff;text-align:center}
+  .fnode.fast{border-color:var(--good);background:#e9f7ef}
+  .fnode .t{font-weight:700;font-size:14.5px}
+  .fnode .s{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .farrow{display:flex;align-items:center;padding:0 8px;color:var(--muted);font-size:20px}
+  @media(max-width:760px){.farrow{transform:rotate(90deg);justify-content:center;width:100%;padding:4px 0}}
+
+  /* demos */
+  .demo{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+  .demo .media{background:#0f172a}
+  .demo img,.demo video{width:100%;display:block}
+  .demo .cap{padding:10px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--line)}
+  .demo .cap b{color:var(--fg)}
+
+  /* team */
+  .team{display:flex;gap:26px;flex-wrap:wrap}
+  .person{text-align:center;max-width:180px}
+  .person .av{width:96px;height:96px;border-radius:50%;background:var(--soft-2);border:1px solid var(--line);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:var(--accent)}
+  .person .nm{font-weight:700;font-size:15px}
+  .person .rl{color:var(--muted);font-size:13px}
+
+  footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--muted);font-size:13.5px}
+  .kv{font-family:var(--mono);font-size:12px;color:var(--muted);word-break:break-all}
+  details{border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0;background:#fff}
+  summary{cursor:pointer;font-weight:700;font-size:15px}
+  .note{border-left:4px solid var(--accent);background:var(--soft);border-radius:0 10px 10px 0;padding:12px 16px;font-size:14.5px;margin:16px 0}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <span class="brand">Aero<span>Lab</span></span>
+    <a class="nl" href="#abstract">Abstract</a>
+    <a class="nl" href="#contributions">Contributions</a>
+    <a class="nl" href="#simulator">Simulator</a>
+    <a class="nl" href="#scenarios">Scenarios</a>
+    <a class="nl" href="#protocol">Protocol</a>
+    <a class="nl" href="#results">Results</a>
+    <a class="nl" href="#demos">Demos</a>
+    <a class="nl" href="#sim2real">Sim-to-real</a>
+    <a class="nl" href="#limitations">Limitations</a>
+    <a class="nl" href="#team">Team</a>
+    <a class="nl" href="#bibtex">BibTeX</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge">Preprint &middot; 2026 &middot; Benchmark + Simulator</span>
+    <h1 class="title">AeroLab: A Latency-Aware Benchmark for Generalist Language Models as Adaptive UAV Pilots</h1>
+    <p class="authors"><a href="#team">Amara Dinesh Kumar</a> &nbsp;&middot;&nbsp; <a href="#team">Naga Sai Priyanka Mallavolu</a></p>
+    <p class="affil">Built on <code class="inline">crazyflow</code> (JAX / MuJoCo MJX) &middot; frozen 130-run evaluation</p>
+    <div class="links">
+      <a class="btn primary" href="static/aerolab_paper.pdf">
+        <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5L14 3.5zM8 12h8v1.6H8V12zm0 4h8v1.6H8V16zm0-8h3v1.6H8V8z"/></svg>
+        Paper (PDF)</a>
+      <a class="btn" href="https://github.com/dineshresearch/aerolab">
+        <svg viewBox="0 0 24 24"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 .1.8 1.7 2.6 1.2.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C15.9 4.7 16.9 5 16.9 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+        Code</a>
+      <a class="btn" href="#results">
+        <svg viewBox="0 0 24 24"><path d="M4 20h16v2H4v-2zm2-8h3v7H6v-7zm5-6h3v13h-3V6zm5 3h3v10h-3V9z"/></svg>
+        Results</a>
+      <a class="btn" href="#bibtex">
+        <svg viewBox="0 0 24 24"><path d="M6 2h12v2H6V2zm0 4h12v2H6V6zm-2 4h16v12H4V10zm2 2v8h12v-8H6z"/></svg>
+        BibTeX</a>
+    </div>
+  </div>
+  <div class="wrap teaser">
+    <figure>
+      <img src="static/worlds/worlds_teaser.png" alt="Third-person views of the four primary AeroLab benchmark worlds: bridge navigation, factory navigation, powerline inspection and disaster response, each with a Crazyflie-class quadrotor at the spawn point.">
+      <figcaption>The four primary adaptive benchmark worlds (third-person view at spawn): <b>bridge_navigation</b>, <b>factory_navigation</b>, <b>powerline_inspection</b>, <b>disaster_response</b>. Each is one continuous easy&rarr;medium&rarr;hard passage rendered on the development laptop.</figcaption>
+    </figure>
+  </div>
+</header>
+
+<section id="abstract">
+  <div class="wrap">
+    <h2><span class="no">01</span>Abstract</h2>
+    <p>Generalist language models are increasingly used as robot policies, yet for unmanned aerial vehicles (UAVs) the evidence remains qualitative: demonstrations of a model flying a quadrotor, or quantitative suites that abstract flight control away entirely. No standardized benchmark asks whether a pretrained model can <em>adapt its navigation and control strategy</em> across long-horizon, partially observed, unfamiliar missions, against competent classical and learned baselines, under a protocol that accounts for the latency, architecture and cost of inference.</p>
+    <p>We introduce <b>AeroLab</b>, a reproducible benchmark built on the <code class="inline">crazyflow</code> JAX/MuJoCo&nbsp;MJX drone simulator. AeroLab contributes (i) an explicit <em>control decomposition</em> that separates slow model-facing decisions (goals, skills, judgments) from fast controller-facing motor commands, with a shaped velocity interface shared identically by every policy; (ii) a <em>latency-aware clock protocol</em> (paused, real-time, hover-while-thinking) that makes inference cost a measured quantity rather than a hidden confound; (iii) capability-oriented navigation worlds targeting long-horizon decisions, memory and recovery, active sensing, and unfamiliar compositions, with disjoint train/validation/test splits and a separate sensor-OOD axis; and (iv) a typed-decision-model arm that tests whether fast, calibrated, non-generative decision models can substitute for language models at the skill-selection layer.</p>
+    <p>We describe the simulator substrate, the observation/action contract, the scoring and statistical protocol, and the agentic harness, and report the frozen 130-run evaluation (a paused-clock ceiling): a persistent-map planner completes half the missions (70.6% weighted progress) while both LLM pilots stay below 10% and fail at the first detour; the free small model nonetheless completes dead-end recovery (6/8 encountered) yet never a detour (0/11), and significantly outperforms the paid frontier model, which also suffers infrastructure failures the small model never exhibits. A commander micro-experiment shows the same small model decomposes missions reliably, supporting the control decomposition. All numbers are measured under a locked freeze with explicit denominators; none are fabricated.</p>
+    <div class="note">Code, frozen protocol manifests and run traces: <a href="https://github.com/dineshresearch/aerolab">github.com/dineshresearch/aerolab</a>. The headline board on this page is the <b>paused-clock ceiling</b>: inference latency is disclosed and measured, but the simulator waits for the model, so real-time flight performance is an upper bound, not a claim of real-time autonomy.</div>
+  </div>
+</section>
+
+<section id="contributions">
+  <div class="wrap">
+    <h2><span class="no">02</span>What AeroLab contributes</h2>
+    <p class="lead">Four design commitments that separate AeroLab from &ldquo;watch an LLM fly&rdquo; demos and from suites that remove flight control entirely.</p>
+    <div class="grid c4">
+      <div class="card"><span class="k">C1</span><h4>Control decomposition</h4><p>Slow model-facing decisions (goals, skills, judgments) are separated from fast controller-facing motor commands. Every policy &mdash; classical, learned, or language &mdash; issues the same shaped velocity setpoints, so comparisons are about decisions, not interface advantage.</p></div>
+      <div class="card"><span class="k">C2</span><h4>Latency-aware clock</h4><p>Three clock modes (paused, real-time, hover-while-thinking) make inference cost a measured protocol axis. Wall-time, token usage and failure modes are reported per policy, not hidden behind a &ldquo;the model thought for a while&rdquo; footnote.</p></div>
+      <div class="card"><span class="k">C3</span><h4>Capability worlds + splits</h4><p>Continuous easy&rarr;medium&rarr;hard passages target detour, memory/recovery and active sensing, with evaluator-only decision regions. Disjoint train/validation/test layouts plus a separate sensor-OOD axis probe generalization, not memorization.</p></div>
+      <div class="card"><span class="k">C4</span><h4>Typed-decision arm</h4><p>A commander micro-experiment tests whether fast, calibrated, non-generative decision models can substitute for language models at the skill-selection layer &mdash; probing where language actually helps.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="simulator">
+  <div class="wrap">
+    <h2><span class="no">03</span>Simulator &amp; observation / action contract</h2>
+    <p class="lead">AeroLab runs on <code class="inline">crazyflow</code>, a JAX/MuJoCo&nbsp;MJX quadrotor simulator, with a Crazyflie-class (cf2x) airframe. Worlds are authored as MuJoCo primitive geometry; the navigator never sees the ground-truth obstacle list &mdash; only sensor observations.</p>
+
+    <h3>Control decomposition</h3>
+    <div class="flow">
+      <div class="fnode"><div class="t">Policy (slow)</div><div class="s">LLM / planner / BC / reactive<br>goals &middot; skills &middot; judgments</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode"><div class="t">Shaped VEL interface</div><div class="s">[x, y, z, yaw] setpoints<br>identical for every policy</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode fast"><div class="t">Controller (fast)</div><div class="s">crazyflow cascaded PID<br>attitude / rate loops</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode fast"><div class="t">Motors / MJX</div><div class="s">rotor thrust &amp; torque<br>rigid-body dynamics</div></div>
+    </div>
+    <p>The model never commands raw motor PWM. It emits waypoint / velocity setpoints through a shaped <code class="inline">VEL</code> contract; a fast classical controller closes the attitude and rate loops. This keeps the comparison about <em>navigation and adaptation</em>, and keeps every policy on identical low-level footing.</p>
+
+    <h3>Sensors (verified on hardware-free CPU)</h3>
+    <div class="trio">
+      <figure class="shot"><img src="static/sensors/camera_track_rgb.png" alt="Third-person tracking camera RGB frame of the quadrotor hovering."><div class="cap">Tracking camera RGB (fovy 45&deg;)</div></figure>
+      <figure class="shot"><img src="static/sensors/camera_fpv_rgb.png" alt="First-person view RGB frame from the onboard forward camera."><div class="cap">Onboard FPV RGB (fovy 70&deg;)</div></figure>
+      <figure class="shot"><img src="static/sensors/depth_track_raycast.png" alt="Raycast depth map of the scene, normalized 0 to 8 meters."><div class="cap">MJX raycast depth (control-grade, Euclidean)</div></figure>
+    </div>
+    <p class="footnote">Proprioception (pos, vel, quat, ang-vel, force, torque, rotor RPM) plus two RGB cameras and MJX raycast depth. The raycast depth is validated against analytic camera&rarr;drone geometry and spatial coherence; MuJoCo offscreen depth is degenerate on CPU and kept only as a debug visualization. Splat RGB-D is GPU-only.</p>
+
+    <h3>Clock protocol</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Mode</th><th>Simulator behaviour while the model thinks</th><th>What it measures</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">paused</code></td><td>Simulation waits for the model; sim-time advances only on <code class="inline">step(n)</code>.</td><td>Decision-quality ceiling (headline board).</td></tr>
+          <tr><td><code class="inline">real_time</code></td><td>Sim-time advances with wall-time; slow inference becomes drift / loss of control.</td><td>Latency as a first-class failure source.</td></tr>
+          <tr><td><code class="inline">hover_while_thinking</code></td><td>A hold keeps the airframe stable during inference, then resumes.</td><td>Cost of a safe &ldquo;stop-and-think&rdquo; fallback.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="wrap">
+    <h2><span class="no">04</span>Scenarios &amp; worlds</h2>
+    <p class="lead">Five worlds. Each adaptive (v2) world is a single continuous ~37&nbsp;m passage with three staged bands &mdash; easy (0&ndash;12&nbsp;m), medium (12&ndash;24&nbsp;m), hard (24&ndash;37&nbsp;m) &mdash; where harder stages <em>combine mechanisms</em> rather than merely shrinking gaps. Sensor noise and latency ramp with the band. Every world is shown below as a layout overview, a third-person tracking view, and the onboard first-person view.</p>
+
+    <div class="world">
+      <div class="head"><h3>Bridge navigation</h3><code>bridge_navigation</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">v2 &middot; staged</span><span class="tag">width 4.0 m &middot; ceiling 3.0 m</span></div>
+      <p class="desc">A bridge-support corridor of pylons, beams and deck sections over water. Offset barriers and U-shaped obstructions force the safe route to initially <em>increase</em> distance to the target (the bridge-support detour); a blocked span creates an observable dead end requiring retreat; an occluded service junction is only assessable from a safe viewing position. The grey-blue steel theme makes clearance judgments against narrow beams the dominant challenge.</p>
+      <div class="trio">
+        <figure class="shot"><img src="static/worlds/bridge_navigation_overview.png" alt="Overview of the bridge navigation corridor with offset baffle walls."><div class="cap">Layout overview</div></figure>
+        <figure class="shot"><img src="static/worlds/bridge_navigation_track.png" alt="Third-person view of the quadrotor in the bridge corridor."><div class="cap">Tracking view</div></figure>
+        <figure class="shot"><img src="static/worlds/bridge_navigation_fpv.png" alt="First-person view down the bridge corridor."><div class="cap">Onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Factory navigation</h3><code>factory_navigation</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">v2 &middot; staged</span><span class="tag">width 3.5 m &middot; ceiling 2.8 m</span></div>
+      <p class="desc">An indoor plant of walls, doorways, machines, chimneys and a silo. The narrowest ceiling of the suite compresses vertical clearance; a blocked aisle forms the canonical memory/recovery dead end (retreat and take the alternative branch), while machine rows occlude junctions that must be sensed before commitment. The orange-brown industrial theme stresses tight doorway threading.</p>
+      <div class="trio">
+        <figure class="shot"><img src="static/worlds/factory_navigation_overview.png" alt="Overview of the factory corridor with machine blocks and dividers."><div class="cap">Layout overview</div></figure>
+        <figure class="shot"><img src="static/worlds/factory_navigation_track.png" alt="Third-person view of the quadrotor in the factory aisle."><div class="cap">Tracking view</div></figure>
+        <figure class="shot"><img src="static/worlds/factory_navigation_fpv.png" alt="First-person view down the factory aisle."><div class="cap">Onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Powerline inspection</h3><code>powerline_inspection</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">v2 &middot; staged</span><span class="tag">width 4.5 m &middot; ceiling 3.8 m</span></div>
+      <p class="desc">A transmission-corridor inspection route between pylons and conductor spans. The widest and tallest envelope permits longer standoff viewing positions, but inspection viewpoints demand approaching occluded junctions from a safe vantage before committing &mdash; rotation alone is not success. The green utility theme couples active sensing with long-horizon viewpoint ordering.</p>
+      <div class="trio">
+        <figure class="shot"><img src="static/worlds/powerline_inspection_overview.png" alt="Overview of the powerline inspection corridor with pylon baffles."><div class="cap">Layout overview</div></figure>
+        <figure class="shot"><img src="static/worlds/powerline_inspection_track.png" alt="Third-person view of the quadrotor between powerline pylons."><div class="cap">Tracking view</div></figure>
+        <figure class="shot"><img src="static/worlds/powerline_inspection_fpv.png" alt="First-person view along the powerline corridor."><div class="cap">Onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Disaster response</h3><code>disaster_response</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">v2 &middot; staged</span><span class="tag">width 3.8 m &middot; ceiling 3.2 m</span></div>
+      <p class="desc">A rubble-strewn response corridor with collapsed spans and blocked passages. Debris baffles create detours whose safe mouth is offset from the direct line; a capped branch is an observable dead end; occluders hide the viable gap until the drone moves to a reveal point. The brown rubble theme is the suite&rsquo;s harshest combination of all three mechanisms and the strongest test of recovery under partial observability.</p>
+      <div class="trio">
+        <figure class="shot"><img src="static/worlds/disaster_response_overview.png" alt="Overview of the disaster response corridor with rubble baffles."><div class="cap">Layout overview</div></figure>
+        <figure class="shot"><img src="static/worlds/disaster_response_track.png" alt="Third-person view of the quadrotor in the disaster corridor."><div class="cap">Tracking view</div></figure>
+        <figure class="shot"><img src="static/worlds/disaster_response_fpv.png" alt="First-person view down the disaster response corridor."><div class="cap">Onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Racing course (auxiliary)</h3><code>racing_course</code></div>
+      <div class="tagrow"><span class="tag">v1 &middot; gates + poles</span><span class="tag">sim-to-real gate geometry</span></div>
+      <p class="desc">The auxiliary gate-and-pole course reused from the <code class="inline">crazyflow</code>-based <code class="inline">lsy_drone_racing</code> benchmark. Colorful rectangular gates must be crossed in order; it provides the sim-to-real visual anchor (below) and a fast, well-understood sanity task distinct from the adaptive navigation suite.</p>
+      <div class="trio" style="grid-template-columns:1fr 1fr">
+        <figure class="shot"><img src="static/worlds/racing_course_track.png" alt="Third-person view of the quadrotor on the racing course."><div class="cap">Tracking view</div></figure>
+        <figure class="shot"><img src="static/worlds/racing_course_fpv.png" alt="First-person view of colorful racing gates."><div class="cap">Onboard FPV (ordered gates)</div></figure>
+      </div>
+    </div>
+
+    <h3>Capability targets &amp; evaluator-only decision regions</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Capability</th><th>World mechanism</th><th>Event metric (evaluator-only)</th></tr></thead>
+        <tbody>
+          <tr><td>Long-horizon decisions</td><td>Offset barriers / U-shaped obstructions where the safe route initially increases distance to target.</td><td>Safe detour completion; necessary retreat vs. wandering.</td></tr>
+          <tr><td>Memory &amp; recovery</td><td>Observable dead ends and branching routes requiring retreat and an alternative.</td><td>Recovery to a viable branch; repeated entry into an observed dead end.</td></tr>
+          <tr><td>Active sensing</td><td>Occluded junction assessable by yawing or moving to a safe viewing position.</td><td>Visibility before branch commitment; subsequent safe passage (rotation alone is not success).</td></tr>
+          <tr><td>Unfamiliar compositions</td><td>Held-out orderings of the three mechanisms (five compositions).</td><td>Generalization across composition, not layout memorization.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="protocol">
+  <div class="wrap">
+    <h2><span class="no">05</span>Benchmark protocol &amp; statistics</h2>
+    <p class="lead">Scoring, splits and uncertainty are fixed before the frozen run and published as manifests.</p>
+    <div class="grid c2">
+      <div class="card"><span class="k">SCORING</span><h4>Weighted checkpoint progress</h4><p><code class="inline">score_pct = progress_pct</code>: ordered mission checkpoints (gates / viewpoints / goal) weighted by the difficulty band they lie in (easy=1, medium=2, hard=3). <b>Success</b> = mission complete <em>and</em> zero collision events; there is no hidden collision penalty in the progress score.</p></div>
+      <div class="card"><span class="k">SPLITS</span><h4>Disjoint layouts + sensor OOD</h4><p>Train / validation / test layouts are disjoint; a held-out-composition stratum probes unfamiliar mechanism orderings. A separate sensor-OOD condition degrades depth / proprioception to test observation generalization.</p></div>
+      <div class="card"><span class="k">STATISTICS</span><h4>Stratified layout bootstrap</h4><p>Confidence intervals come from a stratified bootstrap resampling layouts within world, then an equal-world mean. Paired policy differences use the same layouts, reported as world-equal-weighted point estimates with bootstrap CIs.</p></div>
+      <div class="card"><span class="k">FREEZE</span><h4>Locked, reproducible freeze</h4><p>130 records, complete coverage, no exclusions. Protocol hash and freeze digest are published; every headline number traces to a frozen run record. None are fabricated.</p></div>
+    </div>
+    <p class="kv" style="margin-top:14px">protocol&nbsp;hash&nbsp;3a10ac5b63e5cd1db86835529c524363452c4c5600159b6fa593bb6fb971cf1c<br>freeze&nbsp;digest&nbsp;96fcce6f9dd53f7d54bf883e063efba2b8163cae81d72ba02f33e2e8dbf190ed</p>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <h2><span class="no">06</span>Results (frozen 130-run, paused-clock ceiling)</h2>
+    <p class="lead">Equal-world weighted progress with stratified-bootstrap 95% CIs. &ldquo;Success&rdquo; = mission complete with zero collisions; &ldquo;strict&rdquo; additionally requires the capability-specific predicate.</p>
+
+    <h3>Headline board &mdash; nominal sensors</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Weighted progress % [95% CI]</th><th class="num">Success</th><th class="num">Strict success</th><th class="num">n (worlds)</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td><b>Persistent-map planner</b> (classical)</td><td class="num">70.6 <span class="ci">[58.2, 82.3]</span></td><td class="num">0.50</td><td class="num">0.45</td><td class="num">20 (4)</td></tr>
+          <tr><td>LLM small (free)</td><td class="num">9.3 <span class="ci">[5.9, 12.9]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">20 (4)</td></tr>
+          <tr><td>Reactive (classical)</td><td class="num">4.0 <span class="ci">[2.0, 6.0]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">20 (4)</td></tr>
+          <tr><td>Behavior cloning (learned)</td><td class="num">4.0 <span class="ci">[2.0, 6.0]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">20 (4)</td></tr>
+          <tr><td>LLM large (paid frontier)</td><td class="num">4.0 <span class="ci">[1.6, 6.5]</span></td><td class="num">0.00</td><td class="num">0.00</td><td class="num">16 (4)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">The planner completes half the missions; both LLM pilots stay below 10% weighted progress and fail at the first detour. The free small model nonetheless significantly outperforms the paid frontier model.</p>
+
+    <h3>The first detour is the capability boundary</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Detour encountered</th><th class="num">Strict safe-detour completion</th><th class="num">Sensing encountered</th><th class="num">Strict visibility-before-commit</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>Planner</td><td class="num">20</td><td class="num">90%</td><td class="num">14</td><td class="num">71.25%</td></tr>
+          <tr><td>LLM small</td><td class="num">11</td><td class="num">0%</td><td class="num">7</td><td class="num">0%</td></tr>
+          <tr><td>LLM large</td><td class="num">6</td><td class="num">0%</td><td class="num">4</td><td class="num">0%</td></tr>
+          <tr><td>Behavior cloning</td><td class="num">8</td><td class="num">0%</td><td class="num">4</td><td class="num">0%</td></tr>
+          <tr><td>Reactive</td><td class="num">8</td><td class="num">0%</td><td class="num">4</td><td class="num">0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Strict predicates: detour = completed <em>and</em> retreated; sensing = completed <em>and</em> visible before commit. Recovery is reported separately as loose checkpoint completion: the free small model reaches the dead-end recovery checkpoint in <b>6 of 8</b> encountered episodes yet never completes a detour (0/11) &mdash; recovery is accessible to the small model, detour is not.</p>
+
+    <h3>Paired differences (same layouts, world-equal-weighted)</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Comparison (A &minus; B)</th><th class="num">&Delta; progress pts [95% CI]</th><th class="num">Paired layouts</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>Planner &minus; LLM small</td><td class="num">+61.2 <span class="ci">[46.2, 76.0]</span></td><td class="num">20</td></tr>
+          <tr><td>Planner &minus; LLM large</td><td class="num">+73.3 <span class="ci">[56.9, 88.8]</span></td><td class="num">16</td></tr>
+          <tr><td>Planner &minus; BC</td><td class="num">+66.6 <span class="ci">[52.9, 79.5]</span></td><td class="num">20</td></tr>
+          <tr><td>LLM small &minus; LLM large</td><td class="num">+2.8 <span class="ci">[0.5, 5.8]</span></td><td class="num">16</td></tr>
+          <tr><td>LLM small &minus; reactive</td><td class="num">+5.3 <span class="ci">[1.7, 9.4]</span></td><td class="num">20</td></tr>
+          <tr><td>BC &minus; reactive</td><td class="num">0.0 <span class="ci">[0.0, 0.0]</span></td><td class="num">20</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Sensor-OOD generalization</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Nominal %</th><th class="num">OOD %</th><th class="num">&Delta; (OOD &minus; nominal) [95% CI]</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>Planner</td><td class="num">70.6</td><td class="num">80.0</td><td class="num">+8.3 <span class="ci">[0.0, 25.0]</span></td></tr>
+          <tr><td>LLM small</td><td class="num">9.3</td><td class="num">3.3</td><td class="num">&minus;2.8 <span class="ci">[&minus;5.6, 0.0]</span></td></tr>
+          <tr><td>LLM large</td><td class="num">4.0</td><td class="num">2.5</td><td class="num">&minus;2.5 <span class="ci">[&minus;5.0, 0.0]</span></td></tr>
+          <tr><td>Behavior cloning</td><td class="num">4.0</td><td class="num">0.0</td><td class="num">&minus;3.3 <span class="ci">[&minus;6.7, 0.0]</span></td></tr>
+          <tr><td>Reactive</td><td class="num">4.0</td><td class="num">3.3</td><td class="num">0.0 <span class="ci">[0.0, 0.0]</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">The planner&rsquo;s OOD CI includes 0 (small n); LLM and BC intervals touch 0 at the upper end. OOD is a stress axis, not a claimed improvement.</p>
+
+    <h3>Inference cost &amp; reliability (measured, not hidden)</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Mean wall / episode (s)</th><th class="num">Input tokens</th><th class="num">Cache-read tokens</th><th>Reliability notes</th></tr></thead>
+        <tbody>
+          <tr><td>Reactive</td><td class="num">34</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td>no inference failures</td></tr>
+          <tr><td>Planner</td><td class="num">42</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td>no inference failures</td></tr>
+          <tr><td>BC</td><td class="num">18</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td>no inference failures</td></tr>
+          <tr><td>LLM small (free)</td><td class="num">141</td><td class="num">63,129</td><td class="num">365,082</td><td>12 invalid-action terminations; <b>0 infrastructure failures</b></td></tr>
+          <tr><td>LLM large (paid)</td><td class="num">358</td><td class="num">258,012</td><td class="num">0</td><td><b>6 layouts aborted on infrastructure failures</b>; 0 invalid actions</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">The paid frontier model is ~2.5&times; slower per episode and consumes ~4&times; the input tokens with no cache benefit, yet scores <em>below</em> the free small model and aborts layouts the small model completes. Latency and cost are protocol axes, not footnotes.</p>
+
+    <details>
+      <summary>Full frozen per-layout board (26 layouts &times; 5 policies)</summary>
+      <p class="footnote">Cell = weighted progress % + termination code. <span class="pill S">S</span> mission complete (success) &middot; <span class="pill C">C</span> contact &middot; <span class="pill T">T</span> time limit &middot; <span class="pill I">I</span> invalid action &middot; <span class="pill X">X</span> infrastructure failure &middot; <span class="pill Q">?</span> agent stopped. Str. = stratum (F = frozen test, H = held-out composition).</p>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>Layout</th><th>Str.</th><th class="num">reactive</th><th class="num">planner</th><th class="num">bc</th><th class="num">llm_small</th><th class="num">llm_large</th></tr></thead>
+          <tbody>
+            <tr><td>bridge 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">8.3 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">8.3 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">27.3 <span class="pill C">C</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>disaster 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">50.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">8.3 <span class="pill I">I</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>disaster 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">20.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill I">I</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>disaster 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">27.3 <span class="pill I">I</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>powerline 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill I">I</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">27.3 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1000 (OOD)</td><td>F</td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1001 (OOD)</td><td>F</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>factory 1002 (OOD)</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1000 (OOD)</td><td>F</td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill Q">?</span></td></tr>
+            <tr><td>disaster 1001 (OOD)</td><td>F</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1002 (OOD)</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num"><span class="pill X">X</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section id="demos">
+  <div class="wrap">
+    <h2><span class="no">07</span>Flight demos</h2>
+    <p class="lead">Recorded flights on the development laptop. Classical specialists and a zero-shot language-model pilot, all through the same shaped VEL interface.</p>
+    <div class="grid c2">
+      <div class="demo"><div class="media"><video src="static/demos/llm_reach_pos_fpv.mp4" controls loop muted playsinline preload="metadata"></video></div><div class="cap"><b>Zero-shot LLM pilot (FPV).</b> A free small language model, given only the task and state, chooses a ramped setpoint sequence (takeoff &rarr; stabilize &rarr; translate) and reaches <code class="inline">[1,0,1]</code> with final error 0.062 m and no crash &mdash; no scripted actions. 6 s of sim-time.</div></div>
+      <div class="demo"><div class="media"><img src="static/demos/gate_flight.gif" alt="Animated third-person flight of a classical policy crossing a racing gate."></div><div class="cap"><b>Gate crossing (classical).</b> Tracking view of a specialist policy threading an ordered racing gate.</div></div>
+      <div class="demo"><div class="media"><img src="static/demos/hover_flight.gif" alt="Animated third-person flight of a stable hover."></div><div class="cap"><b>Stable hover (classical).</b> Takeoff and equilibrium at 1 m; the reference equilibrium used for sensor verification.</div></div>
+      <div class="demo"><div class="media"><img src="static/demos/reach_diag_flight.gif" alt="Animated third-person flight of a diagonal reach maneuver."></div><div class="cap"><b>Diagonal reach (classical).</b> A lateral + vertical setpoint ramp tracked by the shared controller.</div></div>
+    </div>
+    <h3>Zero-shot LLM FPV filmstrip</h3>
+    <div class="trio">
+      <figure class="shot"><img src="static/fpv/frame_00000.png" alt="FPV frame at takeoff, ground close and large-checkered."><div class="cap">t=0 s &mdash; takeoff</div></figure>
+      <figure class="shot"><img src="static/fpv/frame_00100.png" alt="FPV frame mid-flight after stabilizing."><div class="cap">t=2 s &mdash; stabilize / translate</div></figure>
+      <figure class="shot"><img src="static/fpv/frame_00200.png" alt="FPV frame near the goal position."><div class="cap">t=4 s &mdash; approach goal</div></figure>
+    </div>
+  </div>
+</section>
+
+<section id="sim2real">
+  <div class="wrap">
+    <h2><span class="no">08</span>Sim-to-real anchor</h2>
+    <p class="lead">AeroLab reuses gate geometry and task/config/scoring patterns from the <code class="inline">crazyflow</code>-based <code class="inline">lsy_drone_racing</code> benchmark, whose MJCF gate assets transfer visually to a real Crazyflie.</p>
+    <figure class="shot" style="max-width:760px;margin:0 auto"><img src="static/sim2real/lsy_drone_racing_sim2real_gates.png" alt="Side-by-side MuJoCo rendering and real-world photograph of a Crazyflie at a racing gate, showing visual match of gate geometry."><div class="cap">Sim-to-real visual match of racing-gate geometry: MuJoCo rendering (left) and the real world with a Crazyflie (right), from the <code class="inline">lsy_drone_racing</code> benchmark. Evidence that MJCF gate assets transfer visually.</div></figure>
+  </div>
+</section>
+
+<section id="limitations">
+  <div class="wrap">
+    <h2><span class="no">09</span>Limitations &amp; honest scope</h2>
+    <div class="grid c2">
+      <div class="card"><h4>Paused-clock ceiling</h4><p>The headline board pauses sim-time during inference. It measures decision quality, not real-time autonomy; real-time and hover-while-thinking modes are the latency stress axes.</p></div>
+      <div class="card"><h4>Small n, wide CIs</h4><p>130 runs over 26 layouts give informative but wide intervals; several OOD and paired CIs touch or include 0. Claims are limited to what the intervals support.</p></div>
+      <div class="card"><h4>Capability predicates</h4><p>Strict capability success (completed &and; predicate) and loose checkpoint completion are reported separately and labeled; mixing them would overstate recovery or detour ability.</p></div>
+      <div class="card"><h4>Simulation-only</h4><p>No physical flight claims. The sim-to-real figure is a visual geometry anchor from prior work, not a transferred-policy result.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="team">
+  <div class="wrap">
+    <h2><span class="no">10</span>Team</h2>
+    <div class="team">
+      <div class="person"><div class="av">AK</div><div class="nm">Amara Dinesh Kumar</div><div class="rl">Author</div></div>
+      <div class="person"><div class="av">NM</div><div class="nm">Naga Sai Priyanka Mallavolu</div><div class="rl">Author</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="bibtex">
+  <div class="wrap">
+    <h2><span class="no">11</span>BibTeX</h2>
+    <div class="copyrow"><button class="copybtn" id="copybib">Copy BibTeX</button></div>
+<pre id="bib">@article{kumar2026aerolab,
+  title   = {AeroLab: A Latency-Aware Benchmark for Generalist Language Models as Adaptive UAV Pilots},
+  author  = {Kumar, Amara Dinesh and Mallavolu, Naga Sai Priyanka},
+  journal = {arXiv preprint},
+  year    = {2026},
+  url     = {https://github.com/dineshresearch/aerolab}
+}</pre>
+    <p class="footnote">If you use AeroLab, its worlds, or the frozen protocol in your work, please cite the preprint and link the repository so runs remain traceable to the freeze.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>AeroLab &middot; built on <code class="inline">crazyflow</code> (JAX / MuJoCo MJX) &middot; <a href="https://github.com/dineshresearch/aerolab">github.com/dineshresearch/aerolab</a> &middot; <a href="/">Back to homepage</a></p>
+    <p>All benchmark numbers on this page are measured under the locked freeze (130 records, complete coverage); none are fabricated. Screenshots rendered on the development laptop (CPU).</p>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('copybib').addEventListener('click', function(){
+    var txt = document.getElementById('bib').innerText;
+    var btn = this;
+    function done(){ btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = 'Copy BibTeX'; }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(done, function(){ fallback(); });
+    } else { fallback(); }
+    function fallback(){
+      var ta = document.createElement('textarea');
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch(e){}
+      document.body.removeChild(ta);
+    }
+  });
+</script>
+</body>
+</html>
