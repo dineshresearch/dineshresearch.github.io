@@ -25,12 +25,12 @@ title: Amara Dinesh Kumar
 
 <table class="table table-hover">
   <tr>
-    <td style="width:180px"><a href="/aerolab/"><img src="/aerolab/static/worlds/worlds_teaser.png" alt="AeroLab benchmark worlds" style="width:170px;border-radius:8px"></a></td>
+    <td style="width:180px"><a href="/aerolab/"><img src="/aerolab/static/paper/v2_template_plan.png" alt="AeroLab frozen benchmark layout" style="width:170px;border-radius:8px"></a></td>
     <td>
-      <a href="/aerolab/"><b>AeroLab</b></a> &mdash; A latency-aware benchmark for generalist language models as adaptive UAV pilots, built on <code>crazyflow</code> (JAX / MuJoCo MJX). Capability-oriented navigation worlds, a shared shaped-velocity control contract, and a frozen 130-run evaluation against classical and learned baselines.<br>
+      <a href="/aerolab/"><b>AeroLab</b></a> &mdash; <i>Can Large Language Models Pilot UAVs? A Capability-Boundary Study.</i> A frozen, latency-aware benchmark built on <code>crazyflow</code> (JAX / MuJoCo MJX): four capability-oriented mission worlds, a shared shaped-velocity control contract, a locked 130-run evaluation and an 18-episode frontier extension against classical and learned specialists.<br>
       <a href="/aerolab/">Project page</a> &middot;
       <a href="https://github.com/dineshresearch/aerolab">Code</a> &middot;
-      Paper (arXiv forthcoming)
+      <a href="/aerolab/paper.pdf">Paper (PDF)</a>
     </td>
   </tr>
 </table>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Experiments &amp; results &mdash; AeroLab</title>
+<meta name="description" content="Every experiment run for the AeroLab capability-boundary study: the frozen 130-run matrix, the 18-episode frontier extension with turn accounting, the commander micro-experiment, the development pilot and the layer-wise synthesis.">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="static/site.css">
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <span class="brand">Aero<span>Lab</span></span>
+    <a class="nl" href="index.html">Overview</a>
+    <a class="nl" href="simulator.html">Simulator</a>
+    <a class="nl" href="environments.html">Environments</a>
+    <a class="nl active" href="experiments.html">Experiments</a>
+    <span class="spacer"></span>
+    <a class="nl" href="paper.pdf">Paper PDF</a>
+    <a class="nl" href="https://github.com/dineshresearch/aerolab">Code</a>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <h1>Experiments &amp; results</h1>
+    <p class="lead">Everything measured for the study, with explicit denominators. The frozen matrix and the frontier extension are governed by separate manifests and are never pooled; development evidence (commander probe, development pilot, framework verification) is labeled as such and is not the held-out frozen test.</p>
+    <p class="kv">protocol&nbsp;hash&nbsp;3a10ac5b63e5cd1db86835529c524363452c4c5600159b6fa593bb6fb971cf1c<br>freeze&nbsp;digest&nbsp;96fcce6f9dd53f7d54bf883e063efba2b8163cae81d72ba02f33e2e8dbf190ed</p>
+    <div class="note"><b>Paused-clock ceiling.</b> All frozen runs, LLM and classical alike, pause sim-time during inference: scores are zero-latency ceilings and wall time / tokens measure inference cost, not its effect on flight. Of 130 scheduled runs, 124 produced scored episodes and 6 ended as infrastructure failures (all in the MiniMax-M2.7 arm); exclusions are counted, never imputed, and no best-of-N selection was used.</div>
+  </div>
+</header>
+
+<section id="frozen">
+  <div class="wrap">
+    <h2><span class="no">01</span>Frozen 130-run matrix (RQ1&ndash;RQ2)</h2>
+    <p class="lead">Equal-world weighted progress with stratified layout-bootstrap 95% CIs (2000 resamples). Success = collision-free mission completion. LLM pilots: <b>Inkling-2</b> (750B-parameter open-weight) and <b>MiniMax-M2.7</b> (open-weight), hosted inference; artifact keys <code class="inline">llm_small</code>/<code class="inline">llm_large</code> are historical arm labels, not size claims.</p>
+
+    <h3>Headline board &mdash; nominal sensors</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Scored</th><th class="num">Success (%)</th><th class="num">Progress (% [95% CI])</th><th class="num">Detour % (enc)</th><th class="num">Wall (s)</th><th class="num">Input tok/run</th></tr></thead>
+        <tbody>
+          <tr><td>reactive (classical)</td><td class="num">20/20</td><td class="num">0</td><td class="num">4.0 <span class="ci">[2.0, 6.0]</span></td><td class="num">0 (8)</td><td class="num">34</td><td class="num">0</td></tr>
+          <tr class="hl"><td><b>planner</b> (persistent map + frontier A*)</td><td class="num">20/20</td><td class="num">50</td><td class="num">70.6 <span class="ci">[58.2, 82.3]</span></td><td class="num">90 (20)</td><td class="num">42</td><td class="num">0</td></tr>
+          <tr><td>bc (behavior-cloned MLP)</td><td class="num">20/20</td><td class="num">0</td><td class="num">4.0 <span class="ci">[2.0, 6.0]</span></td><td class="num">0 (8)</td><td class="num">18</td><td class="num">0</td></tr>
+          <tr><td>Inkling-2 (LLM)</td><td class="num">20/20</td><td class="num">0</td><td class="num">9.3 <span class="ci">[5.9, 12.9]</span></td><td class="num">0 (11)</td><td class="num">141</td><td class="num">63,129</td></tr>
+          <tr><td>MiniMax-M2.7 (LLM)&dagger;</td><td class="num">16/20</td><td class="num">0</td><td class="num">4.0 <span class="ci">[1.6, 6.5]</span></td><td class="num">0 (6)</td><td class="num">358</td><td class="num">258,012</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">&dagger;MiniMax-M2.7 arm: 16/20 scored; 4 infrastructure exclusions (1 text-only first-turn failure after the bounded retry, 3 provider rate-limits). Detour = strict conditional completion with episodes that <em>reached</em> the challenge in parentheses; episodes failing before a challenge are excluded from the conditional rate but included in progress/success.</p>
+
+    <h3>Strict capability outcomes (nominal)</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Detour % (enc)</th><th class="num">Recovery % (elig)</th><th class="num">Avoided+comp / enc</th><th class="num">Sensing % (enc)</th></tr></thead>
+        <tbody>
+          <tr><td>reactive</td><td class="num">0 (8)</td><td class="num">&ndash; (0)</td><td class="num">0/8</td><td class="num">0 (4)</td></tr>
+          <tr class="hl"><td>planner</td><td class="num">90 (20)</td><td class="num">33.3 (5)</td><td class="num">14/19</td><td class="num">71.3 (14)</td></tr>
+          <tr><td>bc</td><td class="num">0 (8)</td><td class="num">0 (8)</td><td class="num">0/8</td><td class="num">0 (4)</td></tr>
+          <tr><td>Inkling-2</td><td class="num">0 (11)</td><td class="num">0 (1)</td><td class="num">6/8</td><td class="num">0 (7)</td></tr>
+          <tr><td>MiniMax-M2.7</td><td class="num">0 (6)</td><td class="num">&ndash; (0)</td><td class="num">0/5</td><td class="num">0 (4)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Parentheses = denominator: encountered episodes for detour/sensing, <em>eligible</em> (entered the dead end at least once) for recovery; &ldquo;&ndash;&rdquo; = no eligible episode. Recovery success requires the instrumented retreat-and-recover after entry; avoidance is not recovery. Inkling-2 passes the recovery-stage checkpoint in 6/8 encountered episodes, in every case by <em>avoiding</em> the dead end; on its single entry it does not recover. Sensing = visible-before-commitment.</p>
+
+    <h3>Paired differences (same layouts, world-equal-weighted)</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Comparison (A &minus; B)</th><th class="num">&Delta; progress pts [95% CI]</th><th class="num">Paired layouts</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>Planner &minus; Inkling-2</td><td class="num">+61.2 <span class="ci">[46.2, 76.0]</span></td><td class="num">20</td></tr>
+          <tr><td>Planner &minus; MiniMax-M2.7</td><td class="num">+73.3 <span class="ci">[56.9, 88.8]</span></td><td class="num">16</td></tr>
+          <tr><td>Planner &minus; BC / planner &minus; reactive</td><td class="num">+66.6 <span class="ci">[52.9, 79.5]</span></td><td class="num">20</td></tr>
+          <tr><td>Inkling-2 &minus; MiniMax-M2.7</td><td class="num">+2.8 <span class="ci">[0.5, 5.8]</span></td><td class="num">16</td></tr>
+          <tr><td>Inkling-2 &minus; reactive</td><td class="num">+5.3 <span class="ci">[1.7, 9.4]</span></td><td class="num">20</td></tr>
+          <tr><td>BC &minus; reactive</td><td class="num">0.0 <span class="ci">[0.0, 0.0]</span></td><td class="num">20</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Sensor-OOD generalization</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Nominal %</th><th class="num">OOD %</th><th class="num">&Delta; (OOD &minus; nominal) [95% CI]</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>Planner</td><td class="num">70.6</td><td class="num">80.0</td><td class="num">+8.3 <span class="ci">[0.0, 25.0]</span></td></tr>
+          <tr><td>Inkling-2</td><td class="num">9.3</td><td class="num">3.3</td><td class="num">&minus;2.8 <span class="ci">[&minus;5.6, 0.0]</span></td></tr>
+          <tr><td>MiniMax-M2.7</td><td class="num">4.0</td><td class="num">2.5</td><td class="num">&minus;2.5 <span class="ci">[&minus;5.0, 0.0]</span></td></tr>
+          <tr><td>Behavior cloning</td><td class="num">4.0</td><td class="num">0.0</td><td class="num">&minus;3.3 <span class="ci">[&minus;6.7, 0.0]</span></td></tr>
+          <tr><td>Reactive</td><td class="num">4.0</td><td class="num">3.3</td><td class="num">0.0 <span class="ci">[0.0, 0.0]</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">The planner&rsquo;s OOD CI includes 0 (small n); LLM and BC intervals touch 0 at the upper end. OOD is a stress axis, not a claimed improvement. Contract violations rise under OOD: Inkling-2 12/26 invalid_action overall (9/20 nominal, 3/6 OOD).</p>
+
+    <h3>Safety exposure &amp; efficiency (means over scored nominal runs)</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Min clearance (m)</th><th class="num">Margin exposure (s)</th><th class="num">Path (m)</th><th class="num">Energy (Wh)</th></tr></thead>
+        <tbody>
+          <tr><td>reactive</td><td class="num">0.331</td><td class="num">0.275</td><td class="num">8.49</td><td class="num">0.055</td></tr>
+          <tr class="hl"><td>planner</td><td class="num">0.071</td><td class="num">0.087</td><td class="num">58.85</td><td class="num">0.049</td></tr>
+          <tr><td>bc</td><td class="num">&minus;0.001</td><td class="num">0.714</td><td class="num">9.96</td><td class="num">0.019</td></tr>
+          <tr><td>Inkling-2</td><td class="num">0.220</td><td class="num">0.056</td><td class="num">10.07</td><td class="num">0.007</td></tr>
+          <tr><td>MiniMax-M2.7</td><td class="num">&minus;0.003</td><td class="num">0.072</td><td class="num">3.83</td><td class="num">0.002</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Negative minimum clearance = contact penetration. Short paths / low energy for failing policies reflect <em>early termination</em>, not efficiency; the planner&rsquo;s long path reflects full-mission traversal (mean completion 62.5 s over its 10 successes). Margin exposure = seconds within the 5 cm safety margin.</p>
+
+    <h3>Inference cost &amp; reliability (measured, not hidden)</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Mean wall / episode (s)</th><th class="num">Input tokens</th><th class="num">Cache-read tokens</th><th>Reliability notes</th></tr></thead>
+        <tbody>
+          <tr><td>Reactive / planner / BC</td><td class="num">34 / 42 / 18</td><td class="num">&ndash;</td><td class="num">&ndash;</td><td>no inference failures</td></tr>
+          <tr><td>Inkling-2</td><td class="num">141</td><td class="num">63,129</td><td class="num">365,082</td><td>12 invalid-action terminations; <b>0 infrastructure failures</b></td></tr>
+          <tr><td>MiniMax-M2.7</td><td class="num">358</td><td class="num">258,012</td><td class="num">0</td><td><b>6 layouts aborted on infrastructure failures</b>; 0 invalid actions</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">MiniMax-M2.7 is ~2.5&times; slower per episode and consumes ~4&times; the input tokens with no cache benefit, yet scores <em>below</em> Inkling-2 and aborts layouts Inkling-2 completes. Contract compliance and infrastructure reliability are failure axes unique to the agentic setting.</p>
+
+    <details>
+      <summary>Complementary layout-level outcomes (nominal)</summary>
+      <p class="footnote">Left: layouts the planner completes; every LLM run stalls at or before the first detour. Right: the only layouts where an LLM exceeds checkpoint 1 &mdash; exactly the held-out seed-1004 compositions whose challenge order places recovery before the detour, and on which the planner also fails. On the other seven planner-failure layouts all LLM progress is &le;10%.</p>
+      <div class="duo">
+        <div class="tblwrap">
+          <table>
+            <thead><tr><th>Layout</th><th>Str.</th><th class="num">Planner</th><th class="num">Best LLM</th><th>Inkling-2 end</th></tr></thead>
+            <tbody>
+              <tr><td>bridge 1001</td><td>F</td><td class="num">100</td><td class="num">0.0</td><td>contact</td></tr>
+              <tr><td>bridge 1002</td><td>H</td><td class="num">100</td><td class="num">8.3</td><td>contact</td></tr>
+              <tr><td>bridge 1003</td><td>H</td><td class="num">100</td><td class="num">10.0</td><td>contact</td></tr>
+              <tr><td>disaster 1001</td><td>F</td><td class="num">100</td><td class="num">0.0</td><td>invalid</td></tr>
+              <tr><td>factory 1001</td><td>F</td><td class="num">100</td><td class="num">0.0</td><td>contact</td></tr>
+              <tr><td>factory 1002</td><td>H</td><td class="num">100</td><td class="num">8.3</td><td>invalid</td></tr>
+              <tr><td>factory 1003</td><td>H</td><td class="num">100</td><td class="num">10.0</td><td>contact</td></tr>
+              <tr><td>powerline 1001</td><td>F</td><td class="num">100</td><td class="num">0.0</td><td>invalid</td></tr>
+              <tr><td>powerline 1002</td><td>H</td><td class="num">100</td><td class="num">0.0</td><td>contact</td></tr>
+              <tr><td>powerline 1003</td><td>H</td><td class="num">100</td><td class="num">10.0</td><td>invalid</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tblwrap">
+          <table>
+            <thead><tr><th>Layout</th><th>Str.</th><th class="num">Planner</th><th class="num">Inkling-2</th><th>End</th></tr></thead>
+            <tbody>
+              <tr><td>disaster 1004</td><td>H</td><td class="num">45.5</td><td class="num">27.3</td><td>invalid</td></tr>
+              <tr><td>factory 1004</td><td>H</td><td class="num">45.5</td><td class="num">27.3</td><td>contact</td></tr>
+              <tr><td>powerline 1004</td><td>H</td><td class="num">45.5</td><td class="num">27.3</td><td>invalid</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Full frozen per-layout board (26 layouts &times; 5 policies)</summary>
+      <p class="footnote">Cell = weighted progress % + termination code. <span class="pill S">S</span> mission complete (success) &middot; <span class="pill C">C</span> contact &middot; <span class="pill T">T</span> time limit &middot; <span class="pill I">I</span> invalid action &middot; <span class="pill X">X</span> infrastructure failure &middot; <span class="pill Q">?</span> agent stopped. Str. = stratum (F = familiar, H = held-out composition).</p>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>Layout</th><th>Str.</th><th class="num">reactive</th><th class="num">planner</th><th class="num">bc</th><th class="num">Inkling-2</th><th class="num">MiniMax-M2.7</th></tr></thead>
+          <tbody>
+            <tr><td>bridge 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">8.3 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>bridge 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">8.3 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">27.3 <span class="pill C">C</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>disaster 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">50.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">8.3 <span class="pill I">I</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>disaster 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">20.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill I">I</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>disaster 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">27.3 <span class="pill I">I</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>powerline 1000</td><td>F</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1001</td><td>F</td><td class="num">0.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1002</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1003</td><td>H</td><td class="num">10.0 <span class="pill T">T</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill I">I</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>powerline 1004</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">45.5 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">27.3 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1000 (OOD)</td><td>F</td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill C">C</span></td></tr>
+            <tr><td>factory 1001 (OOD)</td><td>F</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num"><span class="pill X">X</span></td></tr>
+            <tr><td>factory 1002 (OOD)</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1000 (OOD)</td><td>F</td><td class="num">10.0 <span class="pill C">C</span></td><td class="num">40.0 <span class="pill T">T</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">10.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill Q">?</span></td></tr>
+            <tr><td>disaster 1001 (OOD)</td><td>F</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill I">I</span></td><td class="num">0.0 <span class="pill C">C</span></td></tr>
+            <tr><td>disaster 1002 (OOD)</td><td>H</td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">100.0 <span class="pill S">S</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num">0.0 <span class="pill C">C</span></td><td class="num"><span class="pill X">X</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+
+    <h3>Compute budget</h3>
+    <p>The full 130-run matrix was measured at 3.5 h (207 min) of scored-run wall time (reactive 13.5 min, planner 18.4 min, BC 6.8 min, Inkling-2 61 min, MiniMax-M2.7 108 min), plus bounded retry and infrastructure-recovery overhead; elapsed evaluation time was ~5 h including provider-timeout recovery passes. Inkling-2 incurred no per-token charges (rate-limited serving); the MiniMax-M2.7 sweep ran under explicit budget authorization with provider cost reporting absent. GPU-trained RL specialists are explicitly outside scope and deferred.</p>
+  </div>
+</section>
+
+<section id="extension">
+  <div class="wrap">
+    <h2><span class="no">02</span>Frontier extension arm (18 episodes, separate manifests)</h2>
+    <p class="lead">DeepSeek-V4-Pro and Qwen4-Max through the Qoder CLI harness on the identical frozen test layouts (bridge + powerline, seeds 1000&ndash;1002; 12 episodes), plus a predeclared follow-up arm adding Kimi-K3.1-Pro on the same six layouts (6 episodes; 18 total). Same full mission budgets (100 turns, 1800 s wall, one infrastructure retry), same shaped velocity interface, same hidden-check scorer, strict observe&ndash;decide&ndash;step loop. Protocol and source hashes identical to the frozen v2 manifest; each arm has its own digest; records labeled <code class="inline">run_kind=extension</code>, never pooled. All 18 episodes completed; zero provider errors, zero infrastructure failures.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Model</th><th class="num">Eps</th><th class="num">Succ</th><th class="num">Sim s/ep</th><th class="num">Sim s/turn</th><th class="num">Wall s/turn</th><th class="num">Credits</th></tr></thead>
+        <tbody>
+          <tr><td>DeepSeek-V4-Pro</td><td class="num">6</td><td class="num">0</td><td class="num">2.33</td><td class="num">0.0255</td><td class="num">13.3</td><td class="num">145.08</td></tr>
+          <tr><td>Qwen4-Max</td><td class="num">6</td><td class="num">0</td><td class="num">2.13</td><td class="num">0.0213</td><td class="num">6.0</td><td class="num">197.38</td></tr>
+          <tr><td>Kimi-K3.1-Pro</td><td class="num">6</td><td class="num">0</td><td class="num">2.62</td><td class="num">0.0262</td><td class="num">5.0</td><td class="num">443.73</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Sim-s/turn = simulated flight purchased per counted turn; wall-s/turn = measured generation latency. Credits are provider-metered account units, not currency (786.18 total). All 18 episodes: 0% score, zero checkpoints, 0 detours encountered. The entire extension buys 42.5 s of simulated flight from 18 full mission budgets (1.5&ndash;3.0 s per episode, ~2&ndash;3 m of ~35 m missions). Terminations: turn-budget 16, wall-budget 2 (both DeepSeek-V4-Pro); the wall cap is a measured latency outcome, kept and counted, never retried.</p>
+
+    <h3>Turn accounting: what a turn buys</h3>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Trace (bridge-1000)</th><th class="num">Thinking-only</th><th class="num">Text-only</th><th class="num">Tool-use</th><th>Executed calls</th></tr></thead>
+        <tbody>
+          <tr><td>Qwen4-Max (100 turns)</td><td class="num">30</td><td class="num">20</td><td class="num">50</td><td>49: 1 reset, 25 observe, 23 step (final step never executed &mdash; budget ends mid-decision)</td></tr>
+          <tr><td>DeepSeek-V4-Pro (100 turns)</td><td class="num">33</td><td class="num">5</td><td class="num">62</td><td>31 observe, 30 step, 1 reset</td></tr>
+          <tr class="hl"><td>Inkling-2, frozen opencode harness (same layout)</td><td class="num" colspan="3">14 turns, 804 tool calls</td><td>1594 steps, 15.9 s sim-flight (tool calls batched within a turn)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Under the strict loop each 0.1 s of simulated flight costs ~4 generations (think&ndash;observe&ndash;think&ndash;step), so 100 turns purchase only ~23&ndash;30 environment steps. The traces show the models <em>piloting correctly</em> during those seconds: every executed step uses the maximum legal 10 ticks, commanded velocities are stable at 1.0&ndash;1.2 m/s along the corridor, and all 18 episodes record zero collision events (minimum clearance 0.21 m). Episodes end at budget with the drone ~33 m from the goal: <b>throughput starvation, not a control failure</b>. The frozen opencode harness batches tool calls within a turn, which is why the frozen arms reach the detour and exhibit the <em>capability</em> boundary while the extension arms are <em>throughput</em>-bound before reaching it. The two regimes must not be conflated, and model scale moves neither barrier.</p>
+  </div>
+</section>
+
+<section id="commander">
+  <div class="wrap">
+    <h2><span class="no">03</span>Commander micro-experiment (development probe)</h2>
+    <p class="lead">Can a hosted open-weight model serve the commander role: decompose a natural-language mission into ordered, legal subgoals over a fixed skill menu (<code class="inline">go_to</code>, <code class="inline">rotate</code>, <code class="inline">hold</code>, <code class="inline">inspect</code>, <code class="inline">search</code>, <code class="inline">finished</code>), emit pilot questions, constraints and an escalation policy, and respect bounds and checkpoint order? Four missions: M1_pad, M2_inspect_sequence, M3_search_hidden, M4_infeasible (waypoint outside legal bounds). Single attempt each; heuristic structural checks, not mission execution.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Model</th><th class="num">M1</th><th class="num">M2</th><th class="num">M3</th><th class="num">M4</th><th class="num">Mean</th></tr></thead>
+        <tbody>
+          <tr><td>GLM-5.3-Flash</td><td class="num">0.875</td><td class="num">1.000</td><td class="num">0.818</td><td class="num">0.600</td><td class="num">0.823</td></tr>
+          <tr class="hl"><td>Inkling-2</td><td class="num">0.875</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.800</td><td class="num">0.919</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">The same model that fails closed-loop piloting succeeds at mission decomposition &mdash; exactly as the control decomposition predicts. Caveats: M4 penalizes GLM-5.3-Flash&rsquo;s empty-subgoal refusal (arguably correct behavior the structural scorer conflates with decomposition); two checks are heuristic false-positives (keyword proxies); measured ~22&ndash;24 s/call latency is cold-start server spin-up, not intrinsic throughput; n=4 with one attempt each, so no uncertainty estimate is claimed.</p>
+  </div>
+</section>
+
+<section id="pilot">
+  <div class="wrap">
+    <h2><span class="no">04</span>Development pilot &amp; learned-comparator negative results</h2>
+    <p class="lead">Validation split, one nominal layout per world (seed 200), depth track, identical shaped-VEL interface and scoring, bounded LLM budgets (40 turns, 600 s wall). Paused clock; one run per layout, failures preserved. <b>Not</b> the frozen test: with one layout per world the bootstrap intervals are degenerate and no ranking uncertainty is claimed.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Policy</th><th class="num">Runs</th><th class="num">Score (%)</th><th class="num">Checkpoints</th><th>Termination modes</th></tr></thead>
+        <tbody>
+          <tr><td>reactive</td><td class="num">4</td><td class="num">10</td><td class="num">1/5</td><td>time_limit &times;4 (0 collisions)</td></tr>
+          <tr><td>bc (MLP)</td><td class="num">4</td><td class="num">10</td><td class="num">1/5</td><td>contact &times;4</td></tr>
+          <tr><td>Inkling-2</td><td class="num">4</td><td class="num">10</td><td class="num">1/5</td><td>contact &times;3, invalid_action &times;1</td></tr>
+          <tr><td>MiniMax-M2.7&dagger;</td><td class="num">3</td><td class="num">10</td><td class="num">1/5</td><td>contact &times;3</td></tr>
+          <tr class="hl"><td>planner</td><td class="num">4</td><td class="num">40</td><td class="num">3/5</td><td>time_limit &times;3, contact &times;1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">&dagger;One MiniMax-M2.7 layout (factory) produced no scoreable episode after the protocol-limited infrastructure retry and is excluded, not imputed. Every policy clears the first checkpoint (straight corridor transit); only the mapping planner consistently progresses beyond it. The first detour is the capability boundary already in the pilot.</p>
+    <p><b>Vision-language pilot.</b> On the same bridge layout with RGB+depth, Nemotron-3.5-Super-VL (full budgets: 100 turns, 1800 s) grounded the scene correctly &mdash; identified the barrier from RGB, cross-checked its extent against depth, committed to a right-side detour &mdash; then misjudged near-edge clearance and contacted the barrier corner at t=7.25 s (position &asymp;(6.25, 0.93, 1.38) m; 1/5 checkpoints, 10%; 53 turns, 509 s wall). Perception and intent correct; geometric clearance reasoning not. Other endpoints tested (GLM-5.3-Flash, MiniMax-M2.7) reject image parts at the provider (HTTP 400), so vision capability and model identity are confounded in this pilot and separated in the frozen protocol&rsquo;s sensor tracks.</p>
+    <p><b>Failure modes.</b> (i) Contact at the detour edge (BC, both LLMs, vision model): lateral commitment without sufficient clearance margin. (ii) Schema violation: Inkling-2 issued a 25-tick hold against the documented 1&ndash;10 limit (<code class="inline">invalid_action</code>); the environment was not relaxed. (iii) Infrastructure: MiniMax-M2.7 intermittently ended its first turn as text-only with zero tool calls; 2 of 4 pilot runs failed this way, one reproducibly after the bounded retry. Such runs are recorded with null metrics, never imputed.</p>
+    <p><b>Learned-policy negative results.</b> The first BC fit imitated all four command components including yaw and collapsed in closed loop (contact at 4&ndash;18 s on every world) despite low validation MSE: the planner&rsquo;s sensing-scan yaw is not identifiable from the current observation, and the imitated yaw bias rotated the depth cone off the travel direction. The primary BC comparator therefore imitates translational velocity only (3 outputs) and shares the planner&rsquo;s target-bearing yaw rule at serve time. One DAgger iteration (40 BC-executed, planner-labelled rollouts) improved validation MSE (0.0279&rarr;0.0135) but <em>worsened</em> closed-loop behavior (0/5 checkpoints, contact ~27 s): the bottleneck is missing episode memory, not covariate shift. BC tuning stopped after these two iterations; no baseline was tuned toward a desired score.</p>
+  </div>
+</section>
+
+<section id="synthesis">
+  <div class="wrap">
+    <h2><span class="no">05</span>Synthesis: layer-wise capability assessment</h2>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Layer / aspect</th><th>Assessment</th><th>Deciding evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Mission decomposition (commander)</td><td>Reliable (structural)</td><td>0.919 / 0.823 mean structural score; ordered inspection perfect (&sect;03)</td></tr>
+          <tr><td>Scene grounding &amp; intent</td><td>Correct perception, failed geometry</td><td>Vision pilot: correct barrier identification and detour intent, contact at t=7.25 s on clearance</td></tr>
+          <tr><td>Dead-end avoidance / recovery-stage progress</td><td>Partial</td><td>6/8 encountered, all by avoidance; strict instrumented recovery 0 (eligible n=1)</td></tr>
+          <tr><td>Clearance-critical detour</td><td>Fails</td><td>0/11 and 0/6 strict completions vs planner 90% (20 encountered)</td></tr>
+          <tr><td>Active sensing (visible-before-commit)</td><td>Fails</td><td>0 for every non-planner policy vs planner 71.3% (n=14)</td></tr>
+          <tr class="hl"><td>Closed-loop piloting (shaped velocity)</td><td>Not yet</td><td>0 successes in 46 scored LLM runs; best progress 9.3% vs planner 70.6%, 50% success</td></tr>
+          <tr><td>Action-contract compliance</td><td>Teachable, degrades under OOD</td><td>12/26 invalid_action (9/20 nominal, 3/6 OOD)</td></tr>
+          <tr><td>Low-level stabilization / attitude / motor</td><td>Controller-owned</td><td>Contract excludes it; setpoints trackable straight, unsafe at margins; inner loop 60/60</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The architecture these measurements support is a language model at the slow semantic layers (commander, advisory) above a fast classical or memory-equipped learned inner loop. The double dissociation &mdash; the same model commands well and pilots badly &mdash; is the evidence that the two roles should be separated rather than merged. Scoped to the tested models under one frozen protocol with a paused clock, five seeds per world, and a behavior-cloned rather than RL-tuned learned comparator; the frontier extension finds that hosted frontier models do not move the boundary under the strict-loop interface.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>AeroLab &middot; built on <code class="inline">crazyflow</code> (JAX / MuJoCo MJX) &middot; <a href="https://github.com/dineshresearch/aerolab">github.com/dineshresearch/aerolab</a> &middot; <a href="/">Back to homepage</a></p>
+    <p>Frozen matrix: 130 records, complete coverage. Extension: 18 episodes under separate manifests. Development probes are labeled and never pooled with the frozen test. None of the numbers on this page are fabricated.</p>
+  </div>
+</footer>
+
+</body>
+</html>

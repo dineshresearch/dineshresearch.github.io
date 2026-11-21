@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulator &amp; control contract &mdash; AeroLab</title>
+<meta name="description" content="AeroLab's simulator substrate (crazyflow, JAX / MuJoCo MJX), control decomposition, shaped velocity contract, sensor suite, clock protocol, multi-harness layer and framework verification.">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="static/site.css">
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <span class="brand">Aero<span>Lab</span></span>
+    <a class="nl" href="index.html">Overview</a>
+    <a class="nl active" href="simulator.html">Simulator</a>
+    <a class="nl" href="environments.html">Environments</a>
+    <a class="nl" href="experiments.html">Experiments</a>
+    <span class="spacer"></span>
+    <a class="nl" href="paper.pdf">Paper PDF</a>
+    <a class="nl" href="https://github.com/dineshresearch/aerolab">Code</a>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <h1>Simulator &amp; observation / action contract</h1>
+    <p class="lead">AeroLab is a benchmark layer on <code class="inline">crazyflow</code>, a JAX / MuJoCo&nbsp;MJX quadrotor simulator with a Crazyflie-class (<code class="inline">cf2x_T350</code>) airframe. Simulator, classical baselines and the learned comparator run on a commodity CPU-only machine; model inference uses hosted APIs, so the local device does not affect the measured model-side axes.</p>
+  </div>
+</header>
+
+<section id="pipeline">
+  <div class="wrap">
+    <h2><span class="no">01</span>From operational scenario to frozen layout</h2>
+    <p>Worlds are authored as MuJoCo primitive geometry; the navigator never sees the ground-truth obstacle list &mdash; only sensor observations. Ground-truth clearance, collision and checkpoint events are analytic and <em>evaluator-only</em>.</p>
+    <div class="flow">
+      <div class="fnode"><div class="t">Operational scenario</div><div class="s">bridge / powerline inspection,<br>indoor nav, disaster response</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode"><div class="t">MuJoCo primitives</div><div class="s">v1 authored geometry:<br>pylons, doorways, rubble, conductors</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode"><div class="t">Sensor suite</div><div class="s">raycast depth + RGB + proprio,<br>zone noise &amp; latency</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode"><div class="t">v2 instrumented template</div><div class="s">themed 37 m corridor,<br>evaluator-only annotations</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode fast"><div class="t">Freeze manifest</div><div class="s">hash-locked layouts, seeds,<br>prompts, checkpoints</div></div>
+    </div>
+    <p>Two generations coexist and are <b>never pooled into one leaderboard</b>: the structurally distinct v1 scenario geometry (development, verification, visual reference &mdash; see <a href="environments.html">Environments</a>) and the instrumented v2 compositions flown by the frozen evaluation. Seeded randomization of obstacle placement and start pose materially changes outcomes, confirming the layouts are not degenerate.</p>
+  </div>
+</section>
+
+<section id="decomposition">
+  <div class="wrap">
+    <h2><span class="no">02</span>Control decomposition</h2>
+    <p class="lead">A drone pilot is not a single decision at a single rate. Model-facing decisions sit at &le;10&nbsp;Hz; controller-facing motor commands at 50&ndash;1000&nbsp;Hz. A model never outputs raw thrust or body rates.</p>
+    <div class="flow">
+      <div class="fnode"><div class="t">Policy (slow)</div><div class="s">LLM / planner / BC / reactive<br>goals &middot; skills &middot; judgments</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode"><div class="t">Shaped VEL interface</div><div class="s">[x, y, z, yaw] setpoints<br>identical for every policy</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode fast"><div class="t">Controller (fast)</div><div class="s">Mellinger SE(3) + cascaded PID<br>attitude / rate loops</div></div>
+      <div class="farrow">&rarr;</div>
+      <div class="fnode fast"><div class="t">Motors / MJX</div><div class="s">rotor thrust &amp; torque<br>rigid-body dynamics</div></div>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>#</th><th>Layer</th><th>Owner &amp; rate</th><th>Interface</th><th>Model-facing?</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Motor / rate stabilization</td><td>Inner loop (PID/RL) @ 500&nbsp;Hz&ndash;1&nbsp;kHz</td><td>IMU + attitude + rotor RPM &rarr; 4 motor thrusts (CTBR)</td><td>No</td></tr>
+          <tr><td>2</td><td>Attitude / position tracking</td><td>Mellinger SE(3) + shaped VEL @ 50&ndash;100&nbsp;Hz</td><td>Setpoint + state &rarr; CTBR; accel/jerk limits, 30&deg; tilt cap, leashed reference</td><td>No</td></tr>
+          <tr><td>3</td><td>State estimation</td><td>EKF / sim ground-truth @ 100&ndash;500&nbsp;Hz</td><td>IMU/GPS/mocap/flow &rarr; pose + velocity estimate</td><td>No</td></tr>
+          <tr><td>4</td><td>Reactive obstacle avoidance</td><td>Depth reactive (VFH/field) or BC/RL @ 20&ndash;50&nbsp;Hz</td><td>FPV depth rays + velocity + local goal &rarr; collision-free setpoint adjustment</td><td>No</td></tr>
+          <tr class="hl"><td>5</td><td>Local nav / skill selection</td><td><b>Model pilot</b> (LLM) @ 2&ndash;10&nbsp;Hz</td><td>Compact obs + mission + last k actions &rarr; discrete skill + params</td><td><b>Yes</b></td></tr>
+          <tr><td>6</td><td>Target grounding / perception</td><td>VLM / LLM vision @ per decision</td><td>FPV RGB + mission text &rarr; bounding box / coords + confidence</td><td><b>Yes</b></td></tr>
+          <tr class="hl"><td>7</td><td>Mission interpretation / decomposition</td><td><b>LLM commander</b> @ 0.1&ndash;1&nbsp;Hz</td><td>NL mission + scene + progress &rarr; ordered subgoals, questions, skill invocation</td><td><b>Yes</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Hard boundaries: models never run the millisecond loop (1.4&ndash;3.5&nbsp;s per language call is one to four orders too slow), never serve as the sole tick-rate obstacle avoider, and never bypass the deterministic shaped-VEL envelope. The pilot never generates mission code or open-vocabulary plans; that is the commander&rsquo;s role. A deterministic safety gate aborts or holds on any <code class="inline">unsafe</code> flag or hard-limit breach.</p>
+  </div>
+</section>
+
+<section id="contract">
+  <div class="wrap">
+    <h2><span class="no">03</span>The shared action contract (shaped VEL)</h2>
+    <p class="lead">Every policy &mdash; classical, behavior-cloned or language-model &mdash; issues the same shaped world-frame velocity setpoints above the conventional flight controller, so comparisons are about decisions, not interface advantage.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Contract element</th><th>Bound</th></tr></thead>
+        <tbody>
+          <tr><td>Velocity setpoint</td><td>&plusmn;1.2 m/s per component (world frame x, y, z)</td></tr>
+          <tr><td>Yaw</td><td>absolute world yaw in [&minus;&pi;, &pi;] rad</td></tr>
+          <tr><td>Hold duration</td><td>1&ndash;10 ticks at 100 Hz</td></tr>
+          <tr><td>Shaped front end</td><td>horizontal accel &le;3.0 m/s&sup2;, vertical &le;2.0 m/s&sup2;, per-axis jerk &le;20 m/s&sup3;, 0.15 s approach time constant, thrust-vector tilt cap 30&deg;</td></tr>
+          <tr><td>Excluded by design</td><td>raw motor thrusts, body rates, mission code generation; controller-side clearance and hard limits are never model-owned</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Contract compliance is itself part of piloting competence: violations terminate the episode as <code class="inline">invalid_action</code> and the environment is not relaxed. Violations persist and rise on harder held-out layouts and under sensor OOD (see <a href="experiments.html">Experiments</a>).</p>
+  </div>
+</section>
+
+<section id="sensors">
+  <div class="wrap">
+    <h2><span class="no">04</span>Sensing and rendering (verified on CPU)</h2>
+    <div class="grid c4">
+      <figure class="shot"><img src="static/sensors/camera_track_rgb.png" alt="Third-person tracking camera RGB frame of the quadrotor hovering."><div class="cap">Tracking camera RGB (fovy 45&deg;)</div></figure>
+      <figure class="shot"><img src="static/sensors/camera_fpv_rgb.png" alt="First-person view RGB frame from the onboard forward camera."><div class="cap">Onboard FPV RGB (320&times;240, 70&deg; vFOV)</div></figure>
+      <figure class="shot"><img src="static/sensors/depth_track_raycast.png" alt="Raycast depth map of the scene, normalized 0 to 8 meters."><div class="cap">MJX raycast depth (control-grade)</div></figure>
+      <figure class="shot"><img src="static/paper/depth_track_mujoco.png" alt="Near-constant MuJoCo offscreen depth buffer, degenerate on CPU."><div class="cap">MuJoCo offscreen depth (debug only)</div></figure>
+    </div>
+    <p style="margin-top:14px">Proprioception (pos, vel, quat, ang-vel, force, torque, rotor RPM) plus two RGB cameras and compiled MJX raycast depth, batched over worlds. Raycast depth is validated against analytic camera&rarr;drone geometry (center pixel 1.114&nbsp;m vs true 1.145&nbsp;m), not against the MuJoCo offscreen depth buffer, which is near-constant on CPU and kept only as a debug visualization. Missing depth is <em>unknown</em>, never guaranteed free space.</p>
+    <p>Offscreen RGB renders correctly but is sync-bound: full RGB-D costs ~451&nbsp;ms/frame (~2.2&nbsp;fps at 160&times;120 on CPU), so render rate is decoupled from the 100&nbsp;Hz control loop and pixels are a budgeted, possibly stale resource. The suite adds configurable resolution, rates, latency (delayed-frame buffer with captured pose) and zone noise; difficulty scales noise and latency, and a separate sensor-OOD condition composes frozen perturbations every sensor tick. Photoreal Gaussian-splat RGB-D is GPU-only and deferred.</p>
+  </div>
+</section>
+
+<section id="clock">
+  <div class="wrap">
+    <h2><span class="no">05</span>Latency-aware clock protocol</h2>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Mode</th><th>Simulator behaviour while the model thinks</th><th>What it measures</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td><code class="inline">paused</code></td><td>Simulation waits for the model; sim-time advances only on <code class="inline">step(n)</code>.</td><td>Decision-quality ceiling (the frozen headline board).</td></tr>
+          <tr><td><code class="inline">real_time</code></td><td>Sim-time advances with wall-time; slow inference becomes drift / loss of control.</td><td>Latency as a first-class failure source. Specified, not evaluated in this freeze.</td></tr>
+          <tr><td><code class="inline">hover_while_thinking</code></td><td>A hold keeps the airframe stable during inference, then resumes.</td><td>Cost of a safe &ldquo;stop-and-think&rdquo; fallback. Specified, not evaluated in this freeze.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">All frozen runs, LLM and classical alike, use the paused clock: reported scores are zero-latency ceilings, and wall time / token counts measure inference cost, not its effect on flight. Real-time flight is strictly harder.</p>
+  </div>
+</section>
+
+<section id="harness">
+  <div class="wrap">
+    <h2><span class="no">06</span>Observation encoding &amp; multi-harness layer</h2>
+    <p>A compact lossless observation encoding reduces a full observation from 74,857 to 6,382 characters (0.085&times;, ~12&times; fewer observation tokens). Multi-process parallelism measured <em>slower</em> (0.83&times;) than a warm sequential process on the development machine, motivating the sequential default.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Harness adapter</th><th>Role in the reported measurements</th><th>Turn semantics</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">opencode</code></td><td>Frozen 130-run matrix (MCP tool harness)</td><td>Batches tool calls within a turn: Inkling-2 on bridge-1000 = 14 turns, 804 tool calls, 1594 steps, 15.9 s sim-flight</td></tr>
+          <tr><td><code class="inline">Qoder CLI</code></td><td>Frontier extension arms (18 episodes)</td><td>Strict observe&ndash;decide&ndash;step loop: one observation and one commanded step per turn, recomputed every turn</td></tr>
+          <tr><td><code class="inline">Codex CLI</code>, <code class="inline">Claude Code</code></td><td>Supported adapters for community re-runs</td><td>Harness-agnostic: same frozen worlds, same gates, same scorer</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Identical safety gates across harnesses: dry-run default, held-out test split refused outside the freeze, explicit budget authorization, sequential memory-gated execution, and infrastructure-only retries. The strict loop is the verified mitigation for the harness&rsquo;s repeated-tool-call scheduler stop, which permission allowlists cannot override. Raw prompts, outputs and traces are logged (provider-default sampling; per-run temperature is not recorded).</p>
+  </div>
+</section>
+
+<section id="verify">
+  <div class="wrap">
+    <h2><span class="no">07</span>Framework verification (not benchmark rankings)</h2>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Check</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Mellinger hover (final error)</td><td>0.059 m, no crash</td></tr>
+          <tr><td>Classical task sweep</td><td>10/10 succeed</td></tr>
+          <tr class="hl"><td>Conventional (Mellinger+PID) &times; 3 clocks &times; 10 tasks</td><td>60/60 succeed</td></tr>
+          <tr><td>Sensor verification (proprio / camera / depth)</td><td>10/10 checks pass</td></tr>
+          <tr><td>Raycast depth vs analytic geometry</td><td>center 1.114 m vs true 1.145 m</td></tr>
+          <tr><td>Autonomous navigation, 3 worlds (easy)</td><td>3/3 succeed, 0 collisions</td></tr>
+          <tr><td>Difficulty sweep (seed 0)</td><td>5/12 succeed; distinct collision/clearance/timeout modes</td></tr>
+          <tr><td>Unit suite (v2, post shaped-VEL fix)</td><td>91 tests pass</td></tr>
+          <tr><td>Shaped-VEL replay of legacy flip case</td><td>completes; 17&deg; peak tilt vs 120&deg; legacy</td></tr>
+          <tr><td>Compact observation encoding</td><td>74,857 &rarr; 6,382 chars (0.085&times;)</td></tr>
+          <tr><td>Multi-process vs warm sequential</td><td>0.83&times; (parallel slower)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Two controller findings shaped the shared interface: an instantaneous far/diagonal waypoint setpoint makes the geometric controller demand large lateral acceleration and flip the drone (fixed by bounded-speed setpoint ramping); and pure yaw rotation beyond 120&deg; was initially misclassified as a flip (fixed by testing body-up alignment, invariant to yaw).</p>
+  </div>
+</section>
+
+<section id="demos">
+  <div class="wrap">
+    <h2><span class="no">08</span>Flight demos</h2>
+    <p class="lead">Recorded flights on the development laptop. Classical specialists and a zero-shot language-model pilot, all through the same shaped VEL interface.</p>
+    <div class="grid c2">
+      <div class="demo"><div class="media"><video src="static/demos/llm_reach_pos_fpv.mp4" controls loop muted playsinline preload="metadata"></video></div><div class="cap"><b>Zero-shot LLM pilot (FPV).</b> Inkling-2, given only the task and state, chooses a ramped setpoint sequence (takeoff &rarr; stabilize &rarr; translate) and reaches <code class="inline">[1,0,1]</code> with final error 0.062 m and no crash &mdash; no scripted actions. 6 s of sim-time.</div></div>
+      <div class="demo"><div class="media"><img src="static/demos/gate_flight.gif" alt="Animated third-person flight of a classical policy crossing a racing gate."></div><div class="cap"><b>Gate crossing (classical).</b> Tracking view of a specialist policy threading an ordered racing gate.</div></div>
+      <div class="demo"><div class="media"><img src="static/demos/hover_flight.gif" alt="Animated third-person flight of a stable hover."></div><div class="cap"><b>Stable hover (classical).</b> Takeoff and equilibrium at 1 m; the reference equilibrium used for sensor verification.</div></div>
+      <div class="demo"><div class="media"><img src="static/demos/reach_diag_flight.gif" alt="Animated third-person flight of a diagonal reach maneuver."></div><div class="cap"><b>Diagonal reach (classical).</b> A lateral + vertical setpoint ramp tracked by the shared controller.</div></div>
+    </div>
+    <h3>Zero-shot LLM FPV filmstrip</h3>
+    <div class="trio">
+      <figure class="shot"><img src="static/fpv/frame_00000.png" alt="FPV frame at takeoff, ground close and large-checkered."><div class="cap">t=0 s &mdash; takeoff</div></figure>
+      <figure class="shot"><img src="static/fpv/frame_00100.png" alt="FPV frame mid-flight after stabilizing."><div class="cap">t=2 s &mdash; stabilize / translate</div></figure>
+      <figure class="shot"><img src="static/fpv/frame_00200.png" alt="FPV frame near the goal position."><div class="cap">t=4 s &mdash; approach goal</div></figure>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>AeroLab &middot; built on <code class="inline">crazyflow</code> (JAX / MuJoCo MJX) &middot; <a href="https://github.com/dineshresearch/aerolab">github.com/dineshresearch/aerolab</a> &middot; <a href="/">Back to homepage</a></p>
+    <p>Verification episodes and unit tests validate the framework; they are not benchmark rankings. Screenshots rendered on the development laptop (CPU).</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Environments &amp; mission worlds &mdash; AeroLab</title>
+<meta name="description" content="AeroLab's four real-world-inspired mission worlds, the shared instrumented v2 corridor template, capability mechanisms, splits and the sensor-OOD axis, with simulator screenshots.">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="static/site.css">
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <span class="brand">Aero<span>Lab</span></span>
+    <a class="nl" href="index.html">Overview</a>
+    <a class="nl" href="simulator.html">Simulator</a>
+    <a class="nl active" href="environments.html">Environments</a>
+    <a class="nl" href="experiments.html">Experiments</a>
+    <span class="spacer"></span>
+    <a class="nl" href="paper.pdf">Paper PDF</a>
+    <a class="nl" href="https://github.com/dineshresearch/aerolab">Code</a>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <h1>Environments &amp; mission worlds</h1>
+    <p class="lead">Four real-world-inspired mission worlds &mdash; bridge inspection, industrial indoor navigation, powerline inspection and disaster response &mdash; plus an auxiliary racing course. Each world exists in two generations: structurally distinct <b>v1 scenario-authoring geometry</b> (development, verification, visual reference) and the <b>instrumented v2 compositions</b> flown by the frozen evaluation. The two are never pooled into one leaderboard.</p>
+  </div>
+</header>
+
+<section id="template">
+  <div class="wrap">
+    <h2><span class="no">01</span>The frozen v2 layout: one shared instrumented template</h2>
+    <p>All four worlds instantiate the <em>same</em> 37&nbsp;m corridor, divided into three 12&nbsp;m stages (easy 0&ndash;12, medium 12&ndash;24, hard 24&ndash;37&nbsp;m) that each instantiate one capability mechanism. A theme sets <b>only cross-section and palette</b>, deliberately holding layout constant so cross-world differences isolate sensing, degradation and mission semantics rather than geometry; per-trial seeds jitter barrier side, position and thickness (same seed &rArr; identical jitter across worlds).</p>
+    <figure class="shot" style="margin:16px 0"><img src="static/paper/v2_template_plan.png" alt="Annotated top-down plan of the shared v2 corridor template with difficulty zones, weighted checkpoints and the three stage mechanisms."><div class="cap">Annotated plan of the shared v2 template (factory theme shown; test seed 1000, familiar composition). Dashed lines: difficulty zones; white dots: weighted checkpoints; red: stage mechanisms. Spawn at left, goal at right.</div></figure>
+    <div class="trio">
+      <figure class="shot"><img src="static/paper/v2_mech_detour.png" alt="Pilot-height view of the U-shaped barrier mouth blocking the direct route."><div class="cap"><b>Detour.</b> U-barrier mouth: two lateral walls plus a back wall across the direct route; the safe passage initially <em>increases</em> distance to the target. Evaluator records retreat plane, mouth and blocked target; an inspection checkpoint sits inside the U.</div></figure>
+      <figure class="shot"><img src="static/paper/v2_mech_recovery.png" alt="Pilot-height view of the central divider and capped dead-end branch."><div class="cap"><b>Recovery.</b> Central divider caps one branch with a dead-end wall. Evaluator records dead-end region, retreat point and reveal point, distinguishing instrumented retreat-and-recover from merely avoiding the dead end.</div></figure>
+      <figure class="shot"><img src="static/paper/v2_mech_sensing.png" alt="Pilot-height approach view where the occluder reads as a full-width wall."><div class="cap"><b>Sensing.</b> From the approach line the occluder reads as a full-width wall; the lateral gap and second wall are revealed only from the recorded viewing position. Visibility before commitment is required &mdash; rotation alone is not success.</div></figure>
+    </div>
+    <p style="margin-top:14px">Stage order is the <em>composition</em>: five orderings exist, two familiar (<code class="inline">detour-recovery-sensing</code>, <code class="inline">sensing-detour-recovery</code>) and three held out (<code class="inline">recovery-sensing-detour</code>, <code class="inline">detour-sensing-recovery</code>, <code class="inline">recovery-detour-sensing</code>). Ordered checkpoints (per-stage mechanism and exit targets, weights 1/2/3 by stage, plus a weight-3 goal; totals 10&ndash;12 by composition) define weighted progress. The bands carry position-dependent sensor degradation; a separate sensor-OOD condition composes frozen perturbations every sensor tick. The mechanisms abstract the navigation decisions the operational scenarios demand &mdash; detouring around a bridge support, retreating from a blocked factory aisle, assessing an occluded service passage &mdash; into reusable instrumented probes with explicit denominators.</p>
+  </div>
+</section>
+
+<section id="worlds">
+  <div class="wrap">
+    <h2><span class="no">02</span>The four mission worlds</h2>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>World</th><th>Operational scenario and authored structures (v1)</th><th>Route / bands (m); checkpoints</th><th>v2 corridor (width &times; ceiling, m)</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">bridge_navigation</code></td><td>Bridge inspection over water: deck and rails; twin-tower pylons with 2&ndash;4 cylindrical cross-beams forming narrowing traversal windows; diagonal truss members both sides</td><td>0&ndash;30; 0&ndash;10 / 10&ndash;20 / 20&ndash;30; 5 gate windows + 3 viewpoints + goal</td><td>8.0 &times; 3.0</td></tr>
+          <tr><td><code class="inline">factory_navigation</code></td><td>Industrial indoor navigation: brick wall lines with narrowing doorways and lintels; machinery, columns, overhead pipes/beams, crates; wall shelves and barrels; silo</td><td>0&ndash;22; 0&ndash;8 / 8&ndash;15 / 15&ndash;22; 2 doorways + 3 viewpoints + goal</td><td>7.0 &times; 2.8</td></tr>
+          <tr><td><code class="inline">powerline_inspection</code></td><td>Transmission-line inspection: lattice towers (legs, braces, cross-arms, insulators); three sagging conductors per span (lower sag in hard band); terrain mounds; vegetation densifying per band</td><td>0&ndash;42; 0&ndash;14 / 14&ndash;28 / 28&ndash;42; 6 inspection viewpoints + goal</td><td>9.0 &times; 3.8</td></tr>
+          <tr><td><code class="inline">disaster_response</code></td><td>Post-disaster access: tilted collapsed perimeter slabs; rubble-blocked doorways; randomized rubble fields (4&rarr;8&rarr;14); exposed beams/columns; hard-band dead end</td><td>0&ndash;20; 0&ndash;7 / 7&ndash;14 / 14&ndash;20; 2 gates + goal</td><td>7.6 &times; 3.2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Scenario structures are the authored v1 geometry (screenshots below); the frozen evaluation flies the v2 instrumented compositions (&sect;01) in the themed corridor of the last column. Bands are easy/medium/hard along the route; checkpoints are ordered mission targets (gates/viewpoints/goal).</p>
+
+    <div class="world">
+      <div class="head"><h3>Bridge navigation</h3><code>bridge_navigation</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">grey steel theme</span><span class="tag">v2 corridor 8.0 &times; 3.0 m</span></div>
+      <p class="desc">Bridge inspection over water. Offset barriers and U-shaped obstructions reproduce the bridge-support detour: the safe route around a pylon initially increases distance to the target. A blocked span creates an observable dead end requiring retreat; an occluded service junction is only assessable from a safe viewing position. Clearance judgments against narrow beams are the dominant challenge.</p>
+      <div class="duo">
+        <figure class="shot"><img src="static/paper/scenario_bridge_navigation_track.png" alt="Third-person tracking view of the quadrotor in the bridge scenario geometry."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; tracking view</div></figure>
+        <figure class="shot"><img src="static/paper/scenario_bridge_navigation_fpv.png" alt="First-person view down the bridge corridor."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Factory navigation</h3><code>factory_navigation</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">brown industrial theme</span><span class="tag">v2 corridor 7.0 &times; 2.8 m</span></div>
+      <p class="desc">Industrial indoor navigation. The narrowest ceiling of the suite compresses vertical clearance; a blocked aisle forms the canonical memory/recovery dead end (retreat and take the alternative branch), while machine rows occlude junctions that must be sensed before commitment. Tight doorway threading stresses metric clearance reasoning.</p>
+      <div class="duo">
+        <figure class="shot"><img src="static/paper/scenario_factory_navigation_track.png" alt="Third-person tracking view of the quadrotor in the factory scenario geometry."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; tracking view</div></figure>
+        <figure class="shot"><img src="static/paper/scenario_factory_navigation_fpv.png" alt="First-person view down the factory aisle."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Powerline inspection</h3><code>powerline_inspection</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">green utility theme</span><span class="tag">v2 corridor 9.0 &times; 3.8 m</span></div>
+      <p class="desc">Transmission-line inspection. The widest and tallest envelope permits longer standoff viewing positions, but inspection viewpoints demand approaching occluded junctions from a safe vantage before committing. Active sensing couples with long-horizon viewpoint ordering across sagging conductor spans.</p>
+      <div class="duo">
+        <figure class="shot"><img src="static/paper/scenario_powerline_inspection_track.png" alt="Third-person tracking view of the quadrotor between powerline pylons."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; tracking view</div></figure>
+        <figure class="shot"><img src="static/paper/scenario_powerline_inspection_fpv.png" alt="First-person view along the powerline corridor."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Disaster response</h3><code>disaster_response</code></div>
+      <div class="tagrow"><span class="tag cap">detour</span><span class="tag cap">recovery</span><span class="tag cap">sensing</span><span class="tag">mauve rubble theme</span><span class="tag">v2 corridor 7.6 &times; 3.2 m</span></div>
+      <p class="desc">Post-disaster access. Debris baffles create detours whose safe mouth is offset from the direct line; a capped branch is an observable dead end; occluders hide the viable gap until the drone moves to a reveal point. The suite&rsquo;s harshest combination of all three mechanisms and the strongest test of recovery under partial observability.</p>
+      <div class="duo">
+        <figure class="shot"><img src="static/paper/scenario_disaster_response_track.png" alt="Third-person tracking view of the quadrotor in the disaster scenario geometry."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; tracking view</div></figure>
+        <figure class="shot"><img src="static/paper/scenario_disaster_response_fpv.png" alt="First-person view down the disaster response corridor."><div class="cap">Scenario-authoring geometry (v1, seed 0) &mdash; onboard FPV</div></figure>
+      </div>
+    </div>
+
+    <div class="world">
+      <div class="head"><h3>Racing course (auxiliary)</h3><code>racing_course</code></div>
+      <div class="tagrow"><span class="tag">v1 &middot; gates + poles</span><span class="tag">sim-to-real gate geometry</span></div>
+      <p class="desc">The auxiliary gate-and-pole course reused from the <code class="inline">crazyflow</code>-based <code class="inline">lsy_drone_racing</code> benchmark. Colorful rectangular gates must be crossed in order; it provides the sim-to-real visual anchor (&sect;04) and a fast, well-understood sanity task distinct from the adaptive navigation suite.</p>
+      <div class="duo">
+        <figure class="shot"><img src="static/worlds/racing_course_track.png" alt="Third-person view of the quadrotor on the racing course."><div class="cap">Tracking view</div></figure>
+        <figure class="shot"><img src="static/worlds/racing_course_fpv.png" alt="First-person view of colorful racing gates."><div class="cap">Onboard FPV (ordered gates)</div></figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="capabilities">
+  <div class="wrap">
+    <h2><span class="no">03</span>Capability targets &amp; evaluator-only evidence</h2>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Capability</th><th>Challenge mechanism</th><th>Recorded evidence (evaluator-only)</th></tr></thead>
+        <tbody>
+          <tr><td>Long-horizon decisions</td><td>Offset barriers / U-shaped obstructions where the safe route initially increases distance to the target (e.g. bridge-support detour)</td><td>Safe detour completion; time/path to next legal checkpoint; necessary retreat vs. wandering</td></tr>
+          <tr><td>Memory &amp; recovery</td><td>Observable dead ends and branching routes requiring retreat and an alternative (e.g. blocked factory aisle)</td><td>Recovery to a viable branch; recovery time; repeated entry into an observed dead end</td></tr>
+          <tr><td>Active sensing</td><td>Occluded junction assessable by yawing or moving to a safe viewing position (e.g. obscured service passage)</td><td>Visibility before branch commitment; sensing actions; subsequent safe passage (rotation alone is not success)</td></tr>
+          <tr><td>Unfamiliar combinations</td><td>Reserved orderings/combinations of familiar detours, occlusions, dead ends and mission constraints</td><td>Paired results on reserved compositions; component familiarity and composition split IDs</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>A reactive navigator and a persistent-map planner both fly these worlds closed-loop using only permitted observations (depth bands plus proprioception) and the mission objective; no obstacle map or scripted waypoint list is fed to the navigator. All clearance, collision and checkpoint ground truth is evaluator-only.</p>
+  </div>
+</section>
+
+<section id="splits">
+  <div class="wrap">
+    <h2><span class="no">04</span>Splits, seeds and the sensor-OOD axis</h2>
+    <div class="grid c2">
+      <div class="card"><span class="k">SPLITS</span><h4>Disjoint layouts</h4><p>Train / validation / test layouts are disjoint; held-out compositions are excluded from BC training, validation tuning and prompt development. The frozen test flies five seeds per world (1000&ndash;1004): 20 nominal layouts (F = familiar, H = held-out composition) plus 6 sensor-OOD layouts = 26 layouts &times; 5 policies = 130 scheduled runs.</p></div>
+      <div class="card"><span class="k">OOD</span><h4>Sensor out-of-distribution</h4><p>A separate condition composes frozen perturbations on every sensor tick (depth / proprioception degradation), testing observation generalization rather than layout memorization. OOD is a stress axis, not a claimed improvement.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="sim2real">
+  <div class="wrap">
+    <h2><span class="no">05</span>Sim-to-real anchor</h2>
+    <p class="lead">AeroLab reuses gate geometry and task/config/scoring patterns from the <code class="inline">crazyflow</code>-based <code class="inline">lsy_drone_racing</code> benchmark, whose MJCF gate assets transfer visually to a real Crazyflie.</p>
+    <figure class="shot" style="max-width:760px;margin:0 auto"><img src="static/sim2real/lsy_drone_racing_sim2real_gates.png" alt="Side-by-side MuJoCo rendering and real-world photograph of a Crazyflie at a racing gate, showing visual match of gate geometry."><div class="cap">Sim-to-real visual match of racing-gate geometry: MuJoCo rendering (left) and the real world with a Crazyflie (right), from the <code class="inline">lsy_drone_racing</code> benchmark. Evidence that MJCF gate assets transfer visually.</div></figure>
+    <div class="note" style="margin-top:16px"><b>Safety notice &mdash; no physical transfer experiments.</b> In simulation, the evaluated LLM pilots issued unsafe control proposals: out-of-contract hold durations, out-of-range yaw commands, and clearance-violating setpoints that ended in contact. For safety reasons we have not performed sim-to-real experiments with these policies, and no physical flight is claimed. The figure above is a visual geometry anchor from prior work, not a transferred-policy result. The staged, safety-gated transfer program is specified in &sect;8.1 of the <a href="paper.pdf">paper</a>.</div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>AeroLab &middot; built on <code class="inline">crazyflow</code> (JAX / MuJoCo MJX) &middot; <a href="https://github.com/dineshresearch/aerolab">github.com/dineshresearch/aerolab</a> &middot; <a href="/">Back to homepage</a></p>
+    <p>Screenshots rendered on the development laptop (CPU): v1 scenario geometry with the airframe at spawn; v2 template and mechanism views at evaluator-recorded approach positions.</p>
+  </div>
+</footer>
+
+</body>
+</html>
